@@ -6,17 +6,19 @@ import pandas as pd
 
 from .threshold_types import (
     HysteresisResult, 
-    StepTestResult
+    StepTestResult,
+    TestValidityReport
 )
 from .ventilatory import (
     detect_vt_from_steps, detect_vt_transition_zone, 
     run_sensitivity_analysis
 )
 from .metabolic import detect_smo2_from_steps
-# NOTE: _detect_smo2_thresholds_legacy removed - was never called
 from .step_detection import (
     detect_step_test_range, segment_load_phases
 )
+from .test_validator import validate_ramp_test
+
 
 def analyze_step_test(
     df: pd.DataFrame,
@@ -25,9 +27,24 @@ def analyze_step_test(
     ve_column: str = 'tymeventilation',
     smo2_column: str = 'smo2',
     hr_column: str = 'hr',
-    time_column: str = 'time'
+    time_column: str = 'time',
+    validate_data: bool = True
 ) -> StepTestResult:
-    """High-level orchestration of step test analysis."""
+    """High-level orchestration of step test analysis.
+    
+    Args:
+        df: DataFrame with test data
+        step_duration_sec: Expected step duration
+        power_column: Power column name
+        ve_column: Ventilation column name
+        smo2_column: SmO2 column name
+        hr_column: Heart rate column name
+        time_column: Time column name
+        validate_data: If True, run data validation before analysis
+        
+    Returns:
+        StepTestResult with validation_report, thresholds, and analysis notes
+    """
     result = StepTestResult()
     df.columns = df.columns.str.lower().str.strip()
     
@@ -39,6 +56,28 @@ def analyze_step_test(
     if not has_time:
         result.analysis_notes.append("Brak kolumny czasu")
         return result
+    
+    if validate_data:
+        validation_report = validate_ramp_test(
+            df,
+            power_column=power_column,
+            time_column=time_column
+        )
+        result.validation_report = validation_report
+        
+        if validation_report.quality_label:
+            result.analysis_notes.append(
+                f"📊 Jakość danych: {validation_report.quality_label} ({validation_report.quality_score:.0f}%)"
+            )
+        
+        if validation_report.has_warnings:
+            result.analysis_notes.extend([f"⚠️ {w}" for w in validation_report.warnings])
+        
+        if validation_report.recommendations:
+            result.analysis_notes.extend([f"💡 {r}" for r in validation_report.recommendations])
+        
+        if not validation_report.is_valid:
+            result.analysis_notes.append("❌ Dane nie przeszły walidacji - analiza może być niedokładna")
     
     step_range = None
     df_test = df

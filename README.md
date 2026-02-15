@@ -79,5 +79,23 @@ Pozostałe sekcje w Podsumowaniu:
 3. SmO2 vs THb w czasie
 4. Threshold Discordance Index (TDI)
 5. Estymacja VO2max z Niepewnością (CI95%)
+6. Walidacja Danych i Pewność Progów (NOWE)
+
+## Nowe Funkcjonalności (v0.2.0)
+
+### Walidacja Danych (TestValidator)
+Automatyczna walidacja jakości danych przed analizą:
+- Sprawdzenie czasu trwania testu (min. 5 minut)
+- Detekcja liczby stopni testu (min. 3)
+- Analiza monotoniczności wzrostu mocy
+- Wykrywanie przerw w danych
+- Ocena stabilności kadencji
+
+### Confidence Scores dla Progów
+Każdy wykryty próg (VT1, VT2, LT1, LT2) zawiera:
+- **Pewność detekcji** (0-100%): Wysoka (≥80%), Średnia (60-80%), Niska (<60%)
+- **Zakres wartości** (np. 180-195 W) zamiast pojedynczych punktów
+- **Metodę detekcji** (slope-change, v-slope, curvature-based)
+- **Wizualny wskaźnik pewności** w UI
 
 Aplikacja koncentruje się na podstawowej analizie danych treningowych (PWR, HR, SmO2, VT).

@@ -361,6 +361,20 @@ def render_summary_tab(
     st.subheader("5️⃣ Estymacja VO2max z Niepewnością (CI95%)")
     _render_vo2max_uncertainty(df_plot, rider_weight)
 
+    st.markdown("---")
+
+    # =========================================================================
+    # 6. VALIDATION REPORT & CONFIDENCE (NEW)
+    # =========================================================================
+    if threshold_result.validation_report or threshold_result.vt1_zone or threshold_result.vt2_zone:
+        st.subheader("6️⃣ Walidacja Danych i Pewność Progów")
+        
+        if threshold_result.validation_report:
+            _render_validation_report(threshold_result.validation_report)
+        
+        if threshold_result.vt1_zone or threshold_result.vt2_zone:
+            _render_confidence_meters(threshold_result)
+
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -888,3 +902,106 @@ def _render_vo2max_uncertainty(df_plot: pd.DataFrame, rider_weight: float):
 
         *Uwaga: Jest to estymacja modelowa, nie zastępuje bezpośredniego pomiaru VO₂max w laboratorium.*
         """)
+
+
+def _render_validation_report(validation_report):
+    """Render validation report section."""
+    if not validation_report:
+        return
+    
+    quality_score = validation_report.quality_score
+    status = validation_report.status
+    
+    if status == "valid":
+        color = "#00cc96"
+        icon = "✅"
+        label = "WYSOKA"
+    elif status == "conditional":
+        color = "#ffa15a"
+        icon = "⚠️"
+        label = "ŚREDNIA"
+    else:
+        color = "#ef553b"
+        icon = "❌"
+        label = "NISKA"
+    
+    st.markdown(f"""
+    <div style="padding:15px; border-radius:8px; border:2px solid {color}; background-color: #1a1a1a; margin-bottom:15px;">
+        <h4 style="margin:0; color: {color};">{icon} Jakość Danych: {label} ({quality_score:.0f}%)</h4>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if validation_report.criteria_details:
+        with st.expander("📋 Szczegóły walidacji", expanded=False):
+            for criterion, details in validation_report.criteria_details.items():
+                passed = validation_report.criteria.get(criterion, False)
+                icon_c = "✅" if passed else "❌"
+                
+                if "value_display" in details:
+                    st.write(f"{icon_c} **{criterion}**: {details['value_display']} (oczekiwano: {details.get('expected', 'N/A')})")
+                elif "error" in details:
+                    st.write(f"❌ **{criterion}**: {details['error']}")
+    
+    if validation_report.recommendations:
+        st.warning("💡 **Rekomendacje:**\n" + "\n".join(f"- {r}" for r in validation_report.recommendations))
+
+
+def _render_confidence_meters(threshold_result):
+    """Render confidence meters for detected thresholds."""
+    if not threshold_result:
+        st.info("Brak wykrytych progów do wyświetlenia confidence.")
+        return
+    
+    st.markdown("### 🎯 Pewność Detekcji Progów")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if threshold_result.vt1_zone:
+            _render_single_confidence_meter("VT1 (Wentylacyjny)", threshold_result.vt1_zone)
+        elif threshold_result.vt1_watts:
+            st.metric("VT1 (Wentylacyjny)", f"{threshold_result.vt1_watts:.0f} W")
+            st.caption("⚠️ Brak danych confidence")
+    
+    with col2:
+        if threshold_result.vt2_zone:
+            _render_single_confidence_meter("VT2 (Próg Beztlenowy)", threshold_result.vt2_zone)
+        elif threshold_result.vt2_watts:
+            st.metric("VT2 (Próg Beztlenowy)", f"{threshold_result.vt2_watts:.0f} W")
+            st.caption("⚠️ Brak danych confidence")
+
+
+def _render_single_confidence_meter(label: str, zone):
+    """Render a single confidence meter for a threshold zone."""
+    confidence_pct = zone.confidence * 100
+    
+    if zone.confidence >= 0.8:
+        color = "#00cc96"
+        icon = "✅"
+        level = "Wysoka"
+    elif zone.confidence >= 0.6:
+        color = "#ffa15a"
+        icon = "⚠️"
+        level = "Średnia"
+    else:
+        color = "#ef553b"
+        icon = "❌"
+        level = "Niska"
+    
+    range_str = f"{zone.range_watts[0]:.0f}–{zone.range_watts[1]:.0f} W"
+    midpoint = zone.midpoint_watts
+    
+    st.markdown(f"""
+    <div style="padding:12px; border-radius:8px; border:2px solid {color}; background-color: #1a1a1a;">
+        <h5 style="margin:0; color: {color};">{icon} {label}</h5>
+        <p style="margin:5px 0; color:#aaa;">
+            <b>Zakres:</b> {range_str}<br>
+            <b>Środek:</b> {midpoint:.0f} W
+        </p>
+        <p style="margin:5px 0; color:#aaa;"><b>Pewność:</b> {confidence_pct:.0f}% ({level})</p>
+        <div style="background:#333; border-radius:4px; height:8px; margin-top:8px;">
+            <div style="background:{color}; width:{confidence_pct}%; height:100%; border-radius:4px;"></div>
+        </div>
+        <p style="margin:5px 0; font-size:0.75em; color:#666;">Metoda: {zone.method}</p>
+    </div>
+    """, unsafe_allow_html=True)
