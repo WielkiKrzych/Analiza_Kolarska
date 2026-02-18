@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _calculate_fallback_metrics(metrics: Dict[str, Any], df_plot: pd.DataFrame) -> Dict[str, Any]:
@@ -346,7 +349,7 @@ def export_all_charts_as_png(
                     zipf.writestr(exporter.filename, png_bytes)
             except Exception as e:
                 # Loguj błąd ale kontynuuj z innymi wykresami
-                print(f"Error exporting {exporter.filename}: {e}")
+                logger.warning(f"Error exporting {exporter.filename}: {e}")
 
         # README
         readme = f"""RAPORT WYKRESÓW Z PEŁNĄ ANALIZĄ

@@ -94,8 +94,8 @@ def generate_radar_chart(
         thresholds = report_data.get("thresholds", {})
         vt2 = thresholds.get("vt2_result", thresholds.get("vt2", {}))
         vt2_ve = vt2.get("ve", 0)
-    except:
-        pass
+    except (TypeError, AttributeError, KeyError):
+        vt2_ve = 0
     
     if ve_col:
         ve_max_user = vt2_ve * 1.1 if vt2_ve > 0 else df[ve_col].max()

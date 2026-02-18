@@ -887,7 +887,7 @@ def detect_vt_cpet(
             df_steps["ve_smooth"] = savgol_filter(
                 df_steps["ve"].values, window_length=window, polyorder=2
             )
-        except:
+        except (ValueError, TypeError):
             df_steps["ve_smooth"] = df_steps["ve"].rolling(3, center=True, min_periods=1).mean()
 
         # Check data availability
@@ -1583,5 +1583,5 @@ def _calculate_segment_slope(x: np.ndarray, y: np.ndarray) -> float:
     try:
         slope, _, _, _, _ = stats.linregress(x[mask], y[mask])
         return slope
-    except:
+    except (ValueError, TypeError, ZeroDivisionError):
         return 0.0

@@ -7,10 +7,13 @@ Fetches weather data and calculates TSS corrections based on:
 - Altitude
 - Wind
 """
+import logging
 from dataclasses import dataclass
 from typing import Optional, Tuple
 from datetime import datetime
 import os
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -127,7 +130,7 @@ class EnvironmentService:
             )
             
         except Exception as e:
-            print(f"Weather API error: {e}")
+            logger.warning(f"Weather API error: {e}")
             return None
     
     def _get_mock_data(self, lat: float, lon: float) -> WeatherData:

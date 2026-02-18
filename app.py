@@ -16,9 +16,13 @@ from modules.ml_logic import MLX_AVAILABLE, predict_only, MODEL_FILE
 from modules.notes import TrainingNotes
 from modules.db import SessionStore, SessionRecord
 from modules.reporting.persistence import check_git_tracking
+from modules.domain import SessionType, classify_session_type, classify_ramp_test
 
 # --- SERVICES IMPORTS ---
 from services import calculate_header_metrics, prepare_session_record, prepare_sticky_header_data
+
+# --- CONSTANTS ---
+MIN_POWER_SAMPLES_FOR_RAMP = 300
 
 
 # --- TAB REGISTRY (OCP) ---
@@ -110,7 +114,6 @@ if uploaded_file is not None:
             df_raw = load_data(uploaded_file)
 
             # --- SESSION TYPE CLASSIFICATION (MUST run first) ---
-            from modules.domain import SessionType, classify_session_type, classify_ramp_test
 
             # Check if we already processed this file
             current_file_hash = hash(uploaded_file.name + str(uploaded_file.size))
@@ -127,7 +130,7 @@ if uploaded_file is not None:
                 if "watts" in df_raw.columns or "power" in df_raw.columns:
                     power_col = "watts" if "watts" in df_raw.columns else "power"
                     power = df_raw[power_col].dropna()
-                    if len(power) >= 300:
+                    if len(power) >= MIN_POWER_SAMPLES_FOR_RAMP:
                         ramp_classification = classify_ramp_test(power)
                         st.session_state["ramp_classification"] = ramp_classification
             else:
@@ -194,8 +197,6 @@ if uploaded_file is not None:
     ramp_classification = st.session_state.get("ramp_classification")
 
     if session_type:
-        from modules.domain import SessionType
-
         # Build display message based on session type
         if session_type == SessionType.RAMP_TEST and ramp_classification:
             confidence = ramp_classification.confidence

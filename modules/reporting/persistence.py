@@ -16,6 +16,8 @@ from typing import Dict, Optional, Union
 import subprocess
 import streamlit as st
 
+logger = logging.getLogger(__name__)
+
 from models.results import RampTestResult
 from modules.calculations.version import RAMP_METHOD_VERSION
 
@@ -100,7 +102,7 @@ def _check_source_file_exists(base_dir: str, source_file: str) -> bool:
                 if existing_source and existing_source == source_file:
                     return True
     except Exception as e:
-        print(f"Warning: Failed to check deduplication: {e}")
+        logger.warning(f"Warning: Failed to check deduplication: {e}")
         return False
 
     return False

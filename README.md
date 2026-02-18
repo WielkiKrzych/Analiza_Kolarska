@@ -99,3 +99,18 @@ Każdy wykryty próg (VT1, VT2, LT1, LT2) zawiera:
 - **Wizualny wskaźnik pewności** w UI
 
 Aplikacja koncentruje się na podstawowej analizie danych treningowych (PWR, HR, SmO2, VT).
+
+## Jakość Kodu (v0.2.1)
+
+### Najnowsze Ulepszenia
+- **Poprawione wyjątki** - Wszystkie bare `except:` zastąpione konkretnymi wyjątkami
+- **Logging** - Zastąpiono print() właściwym loggerem w kodzie produkcyjnym
+- **Stabilne testy** - Naprawiono niestabilny test state machine
+- **Konsekwentne nazewnictwo** - Naprawiono inconsistent naming
+- **Stałe** - Dodano stałe dla magic numbers
+
+### Testy
+```bash
+python -m pytest tests/ -v
+# 159 passed, 8 warnings
+```
