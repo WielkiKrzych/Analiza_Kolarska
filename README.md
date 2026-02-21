@@ -1,45 +1,219 @@
-# Analiza_Kolarska
+# 🚴 Analiza Kolarska
 
-Uproszczona wersja aplikacji Tri_Dashboard do analizy danych treningowych kolarskich.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/Streamlit-1.30%2B-red?style=for-the-badge&logo=streamlit" alt="Streamlit">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/Tests-159%20passed-brightgreen?style=for-the-badge&logo=pytest" alt="Tests">
+</p>
 
-## Funkcjonalności
+Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowaną wizualizacją i modelowaniem fizjologicznym.
 
-Aplikacja oferuje analizę podstawowych parametrów treningowych poprzez cztery główne sekcje:
+---
 
-### 📊 Overview
-- **Raport z KPI** - szczegółowy raport z kluczowymi wskaźnikami wydajności
-- **Podsumowanie** - przegląd podstawowych metryk sesji treningowej
+## ⭐ Kluczowe Funkcje
 
-### ⚡ Performance
-- **Power** - analiza mocy, CP, W', oraz zaawansowane metryki mocy
-- **Biomech** - analiza biomechaniczna (kadencja, balans nóg, Pulse Power, Gross Efficiency)
-- **Model** - model wydolnościowy i wycena W'
-- **HR** - analiza tętna i strefy treningowe
-- **Hematology** - parametry hematologiczne
-- **Drift Maps** - mapy dryfu fizjologicznego
+| Moduł | Funkcje |
+|-------|----------|
+| **📊 Overview** | Raport KPI, Podsumowanie sesji, Krzywa mocy |
+| **⚡ Performance** | Power, Biomech, Model (CP/W'), HR, Hematologia, Drift Maps |
+| **🧠 Intelligence** | Nutrition, Limiters |
+| **🫀 Physiology** | HRV, SmO2, Ventilation, Thermal |
 
-### 🧠 Intelligence
-- **Nutrition** - analiza spalania i zapotrzebowania energetycznego
-- **Limiters** - identyfikacja ograniczników wydolnościowych
+---
 
-### 🫀 Physiology
-- **HRV** - analiza zmienności rytmu serca
-- **SmO2** - monitorowanie saturacji mięśniowej
-- **Ventilation** - analiza wentylacji i parametrów oddechowych
-- **Thermal** - analiza termoregulacji
+## 🏗️ Architektura
 
-## Technologie
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         📱 app.py                                │
+│                    (Streamlit Interface)                          │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+   ┌─────────┐   ┌─────────┐   ┌─────────┐
+   │  📊    │   │   ⚡    │   │   🫀    │
+   │Overview│   │Performance│  │Physiology│
+   └─────────┘   └─────────┘   └─────────┘
+        │             │             │
+        └─────────────┴─────────────┘
+                      ▼
+          ┌───────────────────────┐
+          │    🧮 calculations/   │
+          │  (NumPy, SciPy, Numba)│
+          └───────────────────────┘
+                      │
+        ┌─────────────┼─────────────┐
+        ▼             ▼             ▼
+   ┌─────────┐   ┌─────────┐   ┌─────────┐
+   │   💾    │   │  📈     │   │  📤     │
+   │   db/   │   │ reporting│   │ export/ │
+   │ SQLite  │   │         │   │ FIT/CSV │
+   └─────────┘   └─────────┘   └─────────┘
+```
 
-- Python 3.11+
-- Streamlit - interfejs użytkownika
-- Pandas/NumPy - przetwarzanie danych
-- Plotly - wizualizacja danych
+---
 
-## Uruchomienie
+## 🛠️ Technologie
+
+### Core
+- **Python** 3.10+ — Główny język
+- **Streamlit** — Interfejs webowy
+- **Pandas** — Przetwarzanie danych
+- **NumPy** — Obliczenia numeryczne
+
+### Data Processing & ML
+- **SciPy** — Analiza statystyczna
+- **Numba** — JIT compilation
+- **Plotly** — Interaktywne wykresy
+- **NeuroKit2** — Analiza sygnałów biologicznych
+
+### Storage & Tools
+- **SQLite** — Baza danych sesji
+- **Pytest** — Testy (159 passed)
+
+---
+
+## 🚀 Uruchomienie
 
 ```bash
+# Klonowanie repozytorium
+git clone https://github.com/WielkiKrzych/Analiza_Kolarska.git
+cd Analiza_Kolarska
+
+# Uruchomienie aplikacji
 streamlit run app.py
 ```
+
+### Wymagania
+- Python 3.10+
+- SQLite3
+- Wszystkie zależności w `pyproject.toml`
+
+---
+
+## 📁 Struktura Projektu
+
+```
+Analiza_Kolarska/
+├── app.py                      🚀 Główna aplikacja Streamlit
+├── pyproject.toml              📦 Konfiguracja projektu
+├── README.md                   📖 Ten plik
+│
+├── modules/
+│   ├── calculations/           🧮 Silnik obliczeniowy
+│   │   ├── power.py           ⚡ Metryki mocy (NP, IF, TSS)
+│   │   ├── hrv.py             💓 Analiza HRV
+│   │   ├── smo2_advanced.py    🩸 SmO2 + dekonwolucja
+│   │   ├── ventilatory.py      🫁 VT1/VT2 detection
+│   │   ├── thresholds.py       📐 Wykrywanie progów
+│   │   └── ...
+│   ├── ui/                    🎨 Komponenty interfejsu
+│   ├── db/                    💾 SQLite session store
+│   ├── reporting/             📈 Generowanie raportów
+│   └── export/                📤 Eksport (FIT, CSV)
+│
+├── services/
+│   ├── session_analysis.py     🔄 Analiza sesji
+│   └── session_orchestrator.py 🎭 Koordynacja
+│
+├── models/                    📋 Modele danych
+├── signals/                  🔬 Przetwarzanie sygnałów
+├── tests/                    🧪 Testy (159 passed)
+└── data/                     💾 Baza danych SQLite
+```
+
+---
+
+## 📊 Funkcje Szczegółowe
+
+### 📊 Overview
+- **📋 Raport z KPI** — Kompleksowy raport z kluczowymi wskaźnikami
+- **📊 Podsumowanie** — Przegląd metryk sesji, krzywa mocy
+
+### ⚡ Performance
+| Funkcja | Opis |
+|---------|------|
+| 🔋 Power | NP, IF, TSS, MMP, strefy mocy |
+| 🦵 Biomech | Kadencja, balans, Torque, Gross Efficiency |
+| 📐 Model | CP (Critical Power), W' (W Prime) |
+| ❤️ HR | Strefy tętna, decay, Z2 drift |
+| 🧬 Hematology | THb, Hct, Fe |
+| 📈 Drift Maps | Mapy dryfu fizjologicznego |
+
+### 🧠 Intelligence
+| Funkcja | Opis |
+|---------|------|
+| 🍎 Nutrition | Estymacja spalania kalorii/węglowodanów |
+| 🚧 Limiters | Identyfikacja ograniczników wydolności |
+
+### 🫀 Physiology
+| Funkcja | Opis |
+|---------|------|
+| 💓 HRV | RMSSD, pNN50, DFA-a1 |
+| 🩸 SmO2 | Saturacja mięśniowa, dekonwolucja |
+| 🫁 Ventilation | VT1, VT2, RER, breathing power |
+| 🌡️ Thermal | Temperatura centralna/peryferyjna |
+
+---
+
+## 🔬 Walidacja Danych
+
+Aplikacja automatycznie waliduje jakość danych:
+
+- ✅ Minimalny czas trwania testu (5 min)
+- ✅ Minimalna liczba stopni (3+)
+- ✅ Monotoniczność wzrostu mocy
+- ✅ Detekcja przerw w danych
+- ✅ Stabilność kadencji
+
+**Confidence Scores** — Każdy próg zawiera:
+- Pewność detekcji (0-100%)
+- Zakres wartości zamiast punktu
+- Metodę detekcji
+- Wizualny wskaźnik pewności
+
+---
+
+## 🧪 Testy
+
+```bash
+# Uruchomienie testów
+python -m pytest tests/ -v
+
+# Wynik
+# ====================== 159 passed, 8 warnings ======================
+```
+
+---
+
+## ⚡️ Optymalizacje Wydajnościowe
+
+| Technika | Lokalizacja | Zysk |
+|----------|-------------|------|
+| NumPy vectorization | `biomech.py`, `session_analysis.py` | 10-50x |
+| Numba JIT | `hrv.py`, `w_prime.py` | 5-20x |
+| Polars CSV parsing | `utils.py` | 3-5x vs Pandas |
+| @lru_cache | `stamina.py`, `power.py` | Cache hits |
+| SQLite indexes | `session_store.py` | Query speed |
+| Pre-ekstrakcja arrays | `fit_exporter.py` | 3-5x |
+
+---
+
+## 📝 License
+
+MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.
+
+---
+
+## 👤 Autor
+
+**Wielki Krzych** — [GitHub](https://github.com/WielkiKrzych)
+
+<p align="center">
+  <sub>Built with ❤️ using Streamlit, Pandas & NumPy</sub>
+</p>
 
 ## Struktura projektu
 
