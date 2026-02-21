@@ -226,8 +226,27 @@ def load_data(file, chunk_size: Optional[int] = None) -> pd.DataFrame:
     Returns:
         Processed DataFrame with normalized columns
     """
-    # 1. IO -> Raw DataFrame
+    import gc
+    import logging
+    
+    memory_logger = logging.getLogger("memory")
+    
     df_pd = _read_raw_file(file)
+    row_count = len(df_pd)
+    memory_mb = df_pd.memory_usage(deep=True).sum() / 1024 / 1024
+    
+    if row_count > 100000:
+        memory_logger.warning(
+            f"Large file detected: {row_count:,} rows, ~{memory_mb:.1f} MB. "
+            f"Using chunked processing."
+        )
+    
+    if row_count > 500000:
+        memory_logger.warning(
+            f"Very large file: {row_count:,} rows. Consider using smaller files "
+            f"or reducing sampling rate."
+        )
+        gc.collect()
 
     # Check if chunked processing needed for large files
     if len(df_pd) > 100000 and chunk_size is not False:

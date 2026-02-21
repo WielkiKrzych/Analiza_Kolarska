@@ -190,35 +190,40 @@ class FitExporter:
         definition = self._create_definition(MSG_RECORD, fields)
         self._write_message(definition)
         
-        # Write each record
         time_col = 'time' if 'time' in df.columns else None
+        n = len(df)
         
-        for idx, row in df.iterrows():
-            if time_col:
-                elapsed = row[time_col]
-            else:
-                elapsed = idx
-            
+        time_values = df[time_col].values if time_col else None
+        power_values = df['watts'].values if has_power else None
+        hr_values = df['heartrate'].values if has_hr else None
+        cadence_values = df['cadence'].values if has_cadence else None
+        
+        speed_col = 'velocity_smooth' if 'velocity_smooth' in df.columns else 'speed'
+        speed_values = None
+        if has_speed:
+            if speed_col in df.columns:
+                speed_values = df[speed_col].values
+        
+        for i in range(n):
+            elapsed = float(time_values[i]) if time_values is not None else float(i)
             timestamp = int((start_time + timedelta(seconds=elapsed) - self.FIT_EPOCH).total_seconds())
             
-            # Build data based on available fields
             data_parts = [struct.pack('<I', timestamp)]
             
-            if has_power:
-                power = int(row.get('watts', 0))
+            if has_power and power_values is not None:
+                power = int(float(power_values[i]))
                 data_parts.append(struct.pack('<H', max(0, min(65535, power))))
             
-            if has_hr:
-                hr = int(row.get('heartrate', 0))
+            if has_hr and hr_values is not None:
+                hr = int(float(hr_values[i]))
                 data_parts.append(struct.pack('<B', max(0, min(255, hr))))
             
-            if has_cadence:
-                cadence = int(row.get('cadence', 0))
+            if has_cadence and cadence_values is not None:
+                cadence = int(float(cadence_values[i]))
                 data_parts.append(struct.pack('<B', max(0, min(255, cadence))))
             
-            if has_speed:
-                speed_col = 'velocity_smooth' if 'velocity_smooth' in df.columns else 'speed'
-                speed = row.get(speed_col, 0) * 1000  # Convert m/s to mm/s
+            if speed_values is not None:
+                speed = float(speed_values[i]) * 1000
                 data_parts.append(struct.pack('<H', max(0, min(65535, int(speed)))))
             
             self._write_data(MSG_RECORD, b''.join(data_parts))

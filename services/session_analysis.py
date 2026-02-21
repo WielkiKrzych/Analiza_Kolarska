@@ -42,7 +42,8 @@ def calculate_header_metrics(df: pd.DataFrame, cp: float) -> Tuple[float, float,
         return 0.0, 0.0, 0.0
 
     rolling_30s = df["watts"].rolling(window=Config.ROLLING_WINDOW_30S, min_periods=1).mean()
-    np_val = np.power(np.mean(np.power(rolling_30s, 4)), 0.25)
+    rolling_pow4 = np.power(rolling_30s, 4)
+    np_val = np.power(np.mean(rolling_pow4), 0.25)
 
     if pd.isna(np_val):
         np_val = df["watts"].mean()
@@ -102,10 +103,14 @@ def calculate_extended_metrics(
 
         # VO2max estimation
         mmp_5m = df["watts"].rolling(Config.ROLLING_WINDOW_5MIN).mean().max()
-        if not pd.isna(mmp_5m) and rider_weight > 0:
-            power_per_kg = mmp_5m / rider_weight
-            metrics["vo2_max_est"] = 16.61 + 8.87 * power_per_kg
-        else:
+        try:
+            mmp_scalar = float(mmp_5m)
+            if np.isfinite(mmp_scalar) and rider_weight > 0:
+                power_per_kg = mmp_scalar / rider_weight
+                metrics["vo2_max_est"] = 16.61 + 8.87 * power_per_kg
+            else:
+                metrics["vo2_max_est"] = 0
+        except (ValueError, TypeError):
             metrics["vo2_max_est"] = 0
 
     if "hsi" in df.columns:

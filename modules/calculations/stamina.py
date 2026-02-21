@@ -4,6 +4,7 @@ Stamina Score Module.
 Implements composite endurance metrics inspired by INSCYD/UCI methodologies.
 """
 
+from functools import lru_cache
 from typing import Optional, Dict
 
 
@@ -40,20 +41,16 @@ def calculate_stamina_score(
     if vo2max < 0 or fri < 0 or w_prime < 0 or cp <= 0 or weight <= 0:
         return 0.0
 
-    # Normalize VO2max (range: 30-90 ml/kg/min for cyclists)
     vo2_min, vo2_max = 30.0, 90.0
     vo2_normalized = min(100, max(0, (vo2max - vo2_min) / (vo2_max - vo2_min) * 100))
 
-    # Normalize FRI (range: 0.70-1.00)
     fri_min, fri_max = 0.70, 1.00
     fri_normalized = min(100, max(0, (fri - fri_min) / (fri_max - fri_min) * 100))
 
-    # Normalize CP/kg (range: 2.0-7.0 W/kg)
     cp_kg = cp / weight
     cp_min, cp_max = 2.0, 7.0
     cp_normalized = min(100, max(0, (cp_kg - cp_min) / (cp_max - cp_min) * 100))
 
-    # Weighted average
     score = (vo2_normalized * 0.4) + (fri_normalized * 0.3) + (cp_normalized * 0.3)
 
     return round(score, 1)
@@ -62,19 +59,6 @@ def calculate_stamina_score(
 def estimate_vlamax_from_pdc(pdc: Dict[int, float], weight: float) -> Optional[float]:
     """Estimate VLamax from Power Duration Curve shape.
 
-    VLamax (maximum lactate production rate) can be approximated from
-    the relationship between short and long duration powers.
-
-    Higher VLamax = more anaerobic, drops faster with duration
-    Lower VLamax = more aerobic, maintains power longer
-
-    Typical values:
-    - Sprinters: 0.8-1.2 mmol/L/s
-    - All-rounders: 0.5-0.8 mmol/L/s
-    - Climbers/TT: 0.3-0.5 mmol/L/s
-
-    Note: This is an ESTIMATION. Lab testing is required for accurate VLamax.
-
     Args:
         pdc: Power Duration Curve dict (duration -> watts)
         weight: Rider weight in kg
@@ -82,7 +66,6 @@ def estimate_vlamax_from_pdc(pdc: Dict[int, float], weight: float) -> Optional[f
     Returns:
         Estimated VLamax in mmol/L/s or None if insufficient data
     """
-    # Need 30s and 300s (5min) power for estimation
     p30 = pdc.get(30)
     p300 = pdc.get(300)
 
@@ -92,24 +75,19 @@ def estimate_vlamax_from_pdc(pdc: Dict[int, float], weight: float) -> Optional[f
     if p30 <= 0 or p300 <= 0:
         return None
 
-    # Calculate W/kg values
     p30_kg = p30 / weight
     p300_kg = p300 / weight
 
-    # The drop from 30s to 5min power indicates anaerobic contribution
-    # Empirical formula based on INSCYD model approximation
     drop_ratio = (p30_kg - p300_kg) / p30_kg
 
-    # Map drop ratio to VLamax estimate
-    # Typical drop ratios: 0.20-0.50 map to VLamax 0.3-1.0
     vlamax_estimate = 0.3 + (drop_ratio - 0.20) * 2.5
 
-    # Clamp to reasonable range
     vlamax_estimate = max(0.2, min(1.2, vlamax_estimate))
 
     return round(vlamax_estimate, 2)
 
 
+@lru_cache(maxsize=128)
 def get_stamina_interpretation(score: float) -> str:
     """Get human-readable interpretation of Stamina Score.
 
@@ -131,6 +109,7 @@ def get_stamina_interpretation(score: float) -> str:
         return "🔰 Początkujący / rozwojowy"
 
 
+@lru_cache(maxsize=128)
 def get_vlamax_interpretation(vlamax: float) -> str:
     """Get human-readable interpretation of VLamax estimate.
 

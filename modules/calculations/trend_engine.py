@@ -80,25 +80,22 @@ def load_ramp_test_history(index_path: str = "reports/ramp_tests/index.csv") -> 
     if df.empty:
         return []
     
-    # Sort by date ascending
     if 'test_date' in df.columns:
         df['test_date'] = pd.to_datetime(df['test_date'])
         df = df.sort_values(by='test_date', ascending=True)
     
-    # Vectorized approach - avoid iterrows()
-    def load_report_safe(row):
-        json_path = row.get('json_path')
+    json_paths = df['json_path'].dropna().tolist()
+    test_dates = df['test_date'].tolist()
+    
+    reports = []
+    for json_path, test_date in zip(json_paths, test_dates):
         if json_path and os.path.exists(json_path):
             try:
                 report = load_ramp_test_report(json_path)
-                report['_test_date'] = row['test_date']
-                return report
+                report['_test_date'] = test_date
+                reports.append(report)
             except Exception as e:
                 logger.warning(f"Error loading report {json_path}: {e}")
-        return None
-    
-    # Use apply instead of iterrows for better performance
-    reports = df.apply(load_report_safe, axis=1).dropna().tolist()
     
     return reports
 

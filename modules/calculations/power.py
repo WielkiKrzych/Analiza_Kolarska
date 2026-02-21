@@ -2,6 +2,7 @@
 SRP: Moduł odpowiedzialny za obliczenia związane z mocą.
 """
 
+from functools import lru_cache
 from typing import Union, Any, Tuple
 import numpy as np
 import pandas as pd
@@ -221,6 +222,7 @@ def calculate_power_duration_curve(df_pl: Union[pd.DataFrame, Any], durations: l
     return results
 
 
+@lru_cache(maxsize=128)
 def calculate_fatigue_resistance_index(mmp_5min: float, mmp_20min: float) -> float:
     """Calculate Fatigue Resistance Index (FRI).
 
@@ -339,6 +341,7 @@ def calculate_power_zones_time(
     return results
 
 
+@lru_cache(maxsize=128)
 def get_fri_interpretation(fri: float) -> str:
     """Get human-readable interpretation of FRI value.
 

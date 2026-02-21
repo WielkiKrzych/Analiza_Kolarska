@@ -185,14 +185,9 @@ def render_training_load_tab():
             predictions = manager.predict_future_form(planned_tss)
             
             if predictions:
-                pred_df = pd.DataFrame([
-                    {'date': p.date, 'tsb': p.tsb, 'status': p.form_status}
-                    for p in predictions
-                ])
-                
                 st.write("**Przewidywana forma:**")
-                for _, row in pred_df.iterrows():
-                    st.write(f"📅 {row['date']}: TSB = {row['tsb']:.0f} → {row['status']}")
+                for pred in predictions:
+                    st.write(f"📅 {pred.date}: TSB = {pred.tsb:.0f} → {pred.form_status}")
     
     # Sessions history
     st.divider()
