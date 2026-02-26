@@ -25,6 +25,10 @@ def validate_dataframe(df: pd.DataFrame) -> Tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message)
     """
+    # Copy to avoid mutating input DataFrame during type conversion
+    df = df.copy()
+    
+    # 1. Basic Structure
     # 1. Basic Structure
     if df is None or df.empty:
         return False, "Plik jest pusty lub nie udało się go wczytać."

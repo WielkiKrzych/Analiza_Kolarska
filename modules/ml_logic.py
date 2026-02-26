@@ -85,6 +85,8 @@ if MLX_AVAILABLE:
 
     def save_model(model, filepath: str) -> None:
         """Zapisuje wagi modelu do pliku."""
+        mx.savez(filepath, **dict(mlx.utils.tree_flatten(model.parameters())))
+        """Zapisuje wagi modelu do pliku."""
         flattened_params = {}
         for k, v in model.parameters().items():
             if isinstance(v, dict):

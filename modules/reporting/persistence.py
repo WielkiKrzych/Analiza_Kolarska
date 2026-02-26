@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 from models.results import RampTestResult
 from modules.calculations.version import RAMP_METHOD_VERSION
 
+# canonical version of the JSON structure
+from modules.calculations.version import RAMP_METHOD_VERSION
+
 logger = logging.getLogger(__name__)
 
 # canonical version of the JSON structure
@@ -197,6 +200,15 @@ def save_ramp_test_report(
         # Confidence too low even for conditional
         return {"gated": True, "reason": f"Confidence {ramp_confidence:.2f} too low to save report"}
     # 1. Prepare data dictionary
+    data = result.to_dict()
+
+    # Initialize analysis_df for limiter analysis (set inside source_df block)
+    analysis_df = None
+    core_col = None
+    smo2_col = None
+    hsi_col = None
+
+    # 1.1 Add time series if source_df is available (for regeneration support)
     data = result.to_dict()
 
     # 1.1 Add time series if source_df is available (for regeneration support)
@@ -549,6 +561,81 @@ def save_ramp_test_report(
         traceback.print_exc()
 
     # 1.7 Limiter Analysis (20min FTP window for radar chart)
+    # Only run if analysis_df is available (requires source_df)
+    if analysis_df is not None:
+        try:
+            # Calculate 20min MMP window
+            window_sec = 1200  # 20 min
+            if "watts" in analysis_df.columns:
+                analysis_df["rolling_watts_20m"] = (
+                    analysis_df["watts"].rolling(window=window_sec, min_periods=window_sec).mean()
+                )
+
+                if not analysis_df["rolling_watts_20m"].isna().all():
+                    peak_idx = analysis_df["rolling_watts_20m"].idxmax()
+
+                    if not pd.isna(peak_idx):
+                        start_idx = max(0, peak_idx - window_sec + 1)
+                        df_peak = analysis_df.iloc[start_idx : peak_idx + 1]
+
+                        # Calculate percentages
+                        pct_hr = 0
+                        pct_ve = 0
+                        pct_smo2_util = 0
+                        pct_power = 0
+
+                        # HR%
+                        if "hr" in analysis_df.columns:
+                            peak_hr_avg = df_peak["hr"].mean()
+                            max_hr = analysis_df["hr"].max()
+                            pct_hr = (peak_hr_avg / max_hr * 100) if max_hr > 0 else 0
+
+                        # VE%
+                        ve_col = next(
+                            (
+                                c
+                                for c in ["tymeventilation", "ve", "ventilation"]
+                                if c in analysis_df.columns
+                            ),
+                            None,
+                        )
+                        if ve_col:
+                            peak_ve_avg = df_peak[ve_col].mean()
+                            max_ve = analysis_df[ve_col].max() * 1.1  # Estimate VEmax
+                            pct_ve = (peak_ve_avg / max_ve * 100) if max_ve > 0 else 0
+
+                        # SmO2 utilization (desaturation)
+                        if "smo2" in analysis_df.columns:
+                            peak_smo2_avg = df_peak["smo2"].mean()
+                            pct_smo2_util = 100 - peak_smo2_avg
+
+                        # Power%
+                        peak_w_avg = df_peak["watts"].mean()
+                        cp_watts = (
+                            data.get("canonical_physiology", {}).get("summary", {}).get("cp_watts", 0)
+                            or peak_w_avg
+                        )
+                        pct_power = (peak_w_avg / cp_watts * 100) if cp_watts > 0 else 0
+
+                        # Determine limiting factor
+                        limiting_factor = "Serce"
+                        if pct_ve >= max(pct_hr, pct_smo2_util):
+                            limiting_factor = "Płuca"
+                        elif pct_smo2_util >= pct_hr:
+                            limiting_factor = "Mięśnie"
+
+                        data["limiter_analysis"] = {
+                            "window": "20 min (FTP)",
+                            "peak_power": round(peak_w_avg, 0),
+                            "pct_hr": round(pct_hr, 1),
+                            "pct_ve": round(pct_ve, 1),
+                            "pct_smo2_util": round(pct_smo2_util, 1),
+                            "pct_power": round(pct_power, 1),
+                            "limiting_factor": limiting_factor,
+                            "interpretation": _get_limiter_interpretation(limiting_factor),
+                        }
+        except Exception as e:
+            print(f"[Limiter Analysis] Calculation failed: {e}")
     try:
         # Calculate 20min MMP window
         window_sec = 1200  # 20 min

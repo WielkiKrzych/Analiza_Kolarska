@@ -1,9 +1,10 @@
-"""
-History Import UI.
+"""History Import UI.
 
 UI for importing historical training files from 'treningi_csv' folder.
 """
+import html
 import streamlit as st
+from pathlib import Path
 
 from modules.history_import import (
     import_training_folder, 
@@ -93,14 +94,15 @@ def render_history_import_tab(cp: float = 280):
             if fail > 0:
                 st.warning(f"⚠️ Nieudane: **{fail}** plików")
             
-            # Show details
+            # Show details with XSS protection
             with st.expander("Szczegóły importu"):
                 for msg in messages:
+                    escaped_msg = html.escape(msg)
                     if msg.startswith("✅"):
-                        st.markdown(f"<span style='color: green'>{msg}</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='color: green'>{escaped_msg}</span>", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"<span style='color: red'>{msg}</span>", unsafe_allow_html=True)
-            
+                        st.markdown(f"<span style='color: red'>{escaped_msg}</span>", unsafe_allow_html=True)
+
             # Refresh count
             new_count = store.get_session_count()
             st.info(f"**Sesje w bazie po imporcie:** {new_count}")
@@ -120,9 +122,34 @@ def render_history_import_tab(cp: float = 280):
         
         with st.spinner("Importowanie wybranych..."):
             for filename in selected:
+                # Path traversal protection: validate the resolved path is within TRAINING_FOLDER
                 filepath = TRAINING_FOLDER / filename
-                success, msg = import_single_file(filepath, cp_import)
-                if success:
-                    st.success(msg)
-                else:
-                    st.error(msg)
+                try:
+                    resolved_path = filepath.resolve()
+                    training_folder_resolved = TRAINING_FOLDER.resolve()
+                    
+                    # Python 3.9+: use is_relative_to, fallback to string comparison
+                    if hasattr(resolved_path, 'is_relative_to'):
+                        if not resolved_path.is_relative_to(training_folder_resolved):
+                            st.error(f"❌ Nieprawidłowa ścieżka pliku: {html.escape(filename)}")
+                            continue
+                    else:
+                        # Fallback for older Python versions
+                        if not str(resolved_path).startswith(str(training_folder_resolved)):
+                            st.error(f"❌ Nieprawidłowa ścieżka pliku: {html.escape(filename)}")
+                            continue
+                    
+                    if not resolved_path.exists():
+                        st.error(f"❌ Plik nie istnieje: {html.escape(filename)}")
+                        continue
+                    
+                    success, msg = import_single_file(resolved_path, cp_import)
+                    # XSS protection for message display
+                    escaped_msg = html.escape(msg)
+                    if success:
+                        st.success(escaped_msg)
+                    else:
+                        st.error(escaped_msg)
+                        
+                except Exception as e:
+                    st.error(f"❌ Błąd przetwarzania pliku {html.escape(filename)}: {html.escape(str(e))}")

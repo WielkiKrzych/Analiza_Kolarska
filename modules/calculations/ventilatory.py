@@ -927,6 +927,9 @@ def detect_vt_cpet(
 
             # VT (tidal volume) derivatives
             vt_slope = np.gradient(
+                df_steps["vt_smooth"].ffill().values, df_steps["power"].values
+            )
+            vt_slope = np.gradient(
                 df_steps["vt_smooth"].fillna(method="ffill").values, df_steps["power"].values
             )
             df_steps["vt_slope"] = vt_slope

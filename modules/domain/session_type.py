@@ -15,6 +15,16 @@ import numpy as np
 # Threshold for classifying as Ramp Test (must meet at least 75% of criteria)
 RAMP_CONFIDENCE_THRESHOLD = 0.75
 
+# Emoji mapping for session types (module-level constant to avoid dict allocation per call)
+_SESSION_TYPE_EMOJI = {
+    "RAMP_TEST": "📈",
+    "RAMP_TEST_CONDITIONAL": "⚠️",
+    "TRAINING": "🚴",
+    "UNKNOWN": "❓",
+}
+
+RAMP_CONFIDENCE_THRESHOLD = 0.75
+
 
 class SessionType(Enum):
     """Domain enum for classifying training session types."""
@@ -29,6 +39,9 @@ class SessionType(Enum):
         return self.name.replace("_", " ").title()
     
     @property
+    def emoji(self) -> str:
+        """Return an emoji representation of the session type."""
+        return _SESSION_TYPE_EMOJI.get(self.name, "❓")
     def emoji(self) -> str:
         """Return an emoji representation of the session type."""
         return {
@@ -208,6 +221,7 @@ def _detect_power_steps(power_arr: np.ndarray, duration_range: Tuple[int, int]) 
         window = 5
     
     # Smooth to find plateaus
+    smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().bfill().ffill().values
     smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().fillna(method='bfill').fillna(method='ffill').values
     
     # Detect step changes using gradient

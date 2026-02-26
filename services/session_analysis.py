@@ -90,6 +90,9 @@ def calculate_extended_metrics(
         estimate_vlamax_from_pdc,
     )
 
+    # Copy metrics to avoid mutating input
+    metrics = {**metrics}
+
     if "watts" in df.columns:
         metrics["np"] = calculate_normalized_power(df)
         metrics["work_kj"] = df["watts"].sum() / 1000
