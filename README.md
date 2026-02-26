@@ -82,6 +82,12 @@ Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowan�
 git clone https://github.com/WielkiKrzych/Analiza_Kolarska.git
 cd Analiza_Kolarska
 
+# Instalacja zależności (zalecane użycie venv)
+pip install -e .
+
+# Opcjonalnie: instalacja zależności deweloperskich i testowych
+pip install -e ".[dev,test]"
+
 # Uruchomienie aplikacji
 streamlit run app.py
 ```
@@ -201,6 +207,26 @@ python -m pytest tests/ -v
 
 ---
 
+## 🔒 Bezpieczeństwo i Jakość Kodu (v0.3.0)
+
+### Najnowsze Poprawki Bezpieczeństwa
+- **XSS Protection** — `html.escape()` dla wszystkich user inputs w UI
+- **Path Traversal Prevention** — Walidacja ścieżek plików z `is_relative_to()`
+- **Input Mutation Prevention** — Kopiowanie dict/DataFrame przed modyfikacją
+
+### Stabilność Kodu
+- **NameError Fix** — Poprawiona inicjalizacja `analysis_df` w `persistence.py`
+- **Deprecated API** — Zamieniono `.fillna(method=...)` na `.ffill()/.bfill()`
+- **Logging** — Dodano warning przy nieudanym resamplingu
+- **Dead Code Removal** — Usunięto nieużywane zmienne w `ml_logic.py`
+
+### Dependency Management
+- **Version Constraints** — `mlx>=0.5.0,<1.0.0`, `kaleido>=0.2.1`
+- **Optional Dependencies** — pytest przeniesiony do `[project.optional-dependencies]`
+- **Proper .gitignore** — Wykluczenia dla danych wrażliwych (`*.db`, `*.npz`, `user_settings.json`)
+
+---
+
 ## 📝 License
 
 MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.
@@ -215,21 +241,7 @@ MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.
   <sub>Built with ❤️ using Streamlit, Pandas & NumPy</sub>
 </p>
 
-## Struktura projektu
-
-```
-Analiza_Kolarska/
-├── app.py                    # Główny plik aplikacji
-├── modules/
-│   ├── calculations/         # Moduły obliczeniowe
-│   ├── ui/                   # Komponenty UI
-│   ├── db/                   # Baza danych sesji
-│   ├── frontend/             # Frontend helpers
-│   └── export/               # Eksport danych
-├── services/                 # Serwisy aplikacji
-├── tests/                    # Testy
-└── data/                     # Baza danych
-```
+---
 
 ## Uwagi
 
@@ -253,38 +265,4 @@ Pozostałe sekcje w Podsumowaniu:
 3. SmO2 vs THb w czasie
 4. Threshold Discordance Index (TDI)
 5. Estymacja VO2max z Niepewnością (CI95%)
-6. Walidacja Danych i Pewność Progów (NOWE)
-
-## Nowe Funkcjonalności (v0.2.0)
-
-### Walidacja Danych (TestValidator)
-Automatyczna walidacja jakości danych przed analizą:
-- Sprawdzenie czasu trwania testu (min. 5 minut)
-- Detekcja liczby stopni testu (min. 3)
-- Analiza monotoniczności wzrostu mocy
-- Wykrywanie przerw w danych
-- Ocena stabilności kadencji
-
-### Confidence Scores dla Progów
-Każdy wykryty próg (VT1, VT2, LT1, LT2) zawiera:
-- **Pewność detekcji** (0-100%): Wysoka (≥80%), Średnia (60-80%), Niska (<60%)
-- **Zakres wartości** (np. 180-195 W) zamiast pojedynczych punktów
-- **Metodę detekcji** (slope-change, v-slope, curvature-based)
-- **Wizualny wskaźnik pewności** w UI
-
-Aplikacja koncentruje się na podstawowej analizie danych treningowych (PWR, HR, SmO2, VT).
-
-## Jakość Kodu (v0.2.1)
-
-### Najnowsze Ulepszenia
-- **Poprawione wyjątki** - Wszystkie bare `except:` zastąpione konkretnymi wyjątkami
-- **Logging** - Zastąpiono print() właściwym loggerem w kodzie produkcyjnym
-- **Stabilne testy** - Naprawiono niestabilny test state machine
-- **Konsekwentne nazewnictwo** - Naprawiono inconsistent naming
-- **Stałe** - Dodano stałe dla magic numbers
-
-### Testy
-```bash
-python -m pytest tests/ -v
-# 159 passed, 8 warnings
-```
+6. Walidacja Danych i Pewność Progów
