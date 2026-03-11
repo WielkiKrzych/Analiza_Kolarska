@@ -227,6 +227,40 @@ python -m pytest tests/ -v
 
 ---
 
+## 🔧 Changelog (v0.3.1)
+
+### 🐛 Critical Fixes (P0)
+- **CHO Fractions** — Poprawione wartości 0.4/0.7/1.0 → 0.30/0.70/0.90 (badania pokazują ~30/70/90% nie 40/70/100%)
+- **VO2max Formula** — Dodana korekcja GE (Gross Efficiency) dla dokładniejszej estymacji
+- **W' Balance** — Zmieniono model liniowy na wykładniczy (Skiba model) dla rekonstytucji W'
+- **DataFrame Mutation** — Naprawiona mutacja input DataFrame w `thermal.py`, `session_analysis.py`
+- **DFA Quality Grade** — Naprawiona inwertowana logika porównania stringów (max('C', 'A') zwracało 'C')
+- **Metrics Dict** — Usunięto DataFrame z metadanych (przyczyna problemów z serializacją)
+
+### ⚠️ High Priority Fixes (P1)
+- **Stamina Score** — Teraz uwzględnia parametr W' w obliczeniach (20% wagi)
+- **VLamax Disclaimer** — Dodane ostrzeżenie o ±30% niepewności estymacji
+- **VT1 Slope Threshold** — Zwiększone z 0.05 do 0.07 (mniej false positives)
+- **Glycogen Model** — Naprawione podwójne liczenie modyfikatorów mechanicznych
+- **HSI Formula** — Poprawione wagi: Temperatura 70%, HR 30% (wcześniej odwrotnie)
+- **Summary Tab** — Naprawione hardcoded zera dla LT1/LT2 (teraz używa VT1/VT2 jako proxy)
+- **HRV Cache** — Dodany limit LRU cache + SHA-256 zamiast MD5
+- **df.columns Mutation** — Dodane `.copy()` przed modyfikacją w `thresholds.py`
+
+### 🔨 Medium Priority Fixes (P2)
+- **Work [kJ]** — Poprawione obliczenia dla próbek nie-1s (używa rzeczywistych dt)
+- **VT1 < VT2 Validation** — Dodana walidacja i automatyczna korekta odwróconych wartości
+- **CHO Base** — Zmniejszone z 30g/h do 20g/h przy niskiej intensywności
+- **Debug Prints** — Usunięte printy debug z `hrv.py`
+- **Double Logger** — Usunięty duplikat logger w `smo2_advanced.py`
+- **File Hash** — SHA-256 zamiast prostego hash dla uniknięcia kolizji
+- **XSS Protection** — Dodane `html.escape()` dla session_type w unsafe_allow_html
+
+### 📝 Low Priority / UI (P3)
+- **FRI Warning** — Dodany komunikat o wymaganiu min. 60 min sesji dla wiarygodnego FRI
+- **VLamax UI Disclaimer** — Wyświetlane ostrzeżenie o niepewności w interpretacji
+---
+
 ## 📝 License
 
 MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.

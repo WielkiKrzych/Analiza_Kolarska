@@ -102,9 +102,10 @@ def calculate_glycogen_consumption(
     # At CP, ~60g/h CHO usage; scales roughly linearly with intensity
     intensity_pct = power / cp * 100
     
-    # Base formula: exponential increase above threshold
+    # FIXED: Base formula adjusted - literature suggests 20-25g/h at low intensity
+    # not 30g/h as previously used
     if intensity_pct < 60:
-        cho_base = 30 + (intensity_pct / 60) * 20  # 30-50 g/h
+        cho_base = 20 + (intensity_pct / 60) * 30  # 20-50 g/h (was 30-50)
     elif intensity_pct < 100:
         cho_base = 50 + ((intensity_pct - 60) / 40) * 40  # 50-90 g/h
     else:
@@ -149,7 +150,11 @@ def calculate_glycogen_consumption(
     modifiers["cadence"] = cadence_modifier
     
     # === FINAL CALCULATION ===
-    total_modifier = temp_modifier * vlamax_modifier * occlusion_modifier * smo2_modifier * cadence_modifier
+    # FIXED: Avoid double-counting - cadence affects occlusion, so don't stack them
+    # Use average of cadence and occlusion modifiers instead of multiplying
+    mechanical_modifier = (cadence_modifier + occlusion_modifier) / 2
+    metabolic_modifier = temp_modifier * vlamax_modifier * smo2_modifier
+    total_modifier = mechanical_modifier * metabolic_modifier
     cho_final = cho_base * total_modifier
     
     return {

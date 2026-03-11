@@ -16,6 +16,9 @@ def calculate_w_prime_fast(watts, time, cp, w_prime_cap):
     
     Implementacja modelu różnicowego W' Skiba/Morton.
     
+    FIXED: Added exponential W' reconstitution (Skiba model)
+    When power drops below CP, W' recovers exponentially with time constant τ.
+    
     Args:
         watts: Tablica mocy [W]
         time: Tablica czasów [s]
@@ -31,6 +34,11 @@ def calculate_w_prime_fast(watts, time, cp, w_prime_cap):
     
     prev_time = time[0]
     
+    # FIXED: Skiba exponential recovery time constant (τ)
+    # τ = W' / (CP - P_below) typically ~300-600s for trained athletes
+    # Using dynamic τ based on power deficit
+    tau_base = w_prime_cap / cp * 300.0  # Base τ in seconds
+    
     for i in range(n):
         if i == 0:
             dt = 1.0
@@ -38,9 +46,21 @@ def calculate_w_prime_fast(watts, time, cp, w_prime_cap):
             dt = time[i] - prev_time
             if dt <= 0: dt = 1.0
             prev_time = time[i]
-            
+        
         # Differential W' Model: dW/dt = CP - P
-        delta = (cp - watts[i]) * dt
+        # FIXED: Add exponential recovery when below CP
+        power_diff = cp - watts[i]
+        
+        if power_diff > 0:
+            # Below CP: Exponential reconstitution (Skiba model)
+            # W'(t) = W'_remaining + (W'_cap - W'_remaining) * (1 - e^(-dt/τ))
+            # Simplified: recover proportionally to time below CP
+            tau = tau_base * (cp / max(watts[i], 1.0))  # Dynamic τ
+            recovery_rate = (w_prime_cap - curr_w) / tau
+            delta = recovery_rate * dt
+        else:
+            # Above CP: Linear depletion
+            delta = power_diff * dt
         
         # Integral
         curr_w += delta

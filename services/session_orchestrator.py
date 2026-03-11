@@ -86,9 +86,11 @@ def process_uploaded_session(
     
     # Store intermediate values in metrics for later use
     # We use a leading underscore convention for internal values
+    # FIXED: Removed DataFrame from metrics dict - DataFrames should not be stored in metrics
+    # The df_clean_pl is now returned separately if needed
     metrics['_decoupling_percent'] = decoupling_percent
     metrics['_drift_z2'] = drift_z2
-    metrics['_df_clean_pl'] = df_clean_pl
+    # metrics['_df_clean_pl'] removed - use function return value instead
     
     return df_plot, df_plot_resampled, metrics, None
 

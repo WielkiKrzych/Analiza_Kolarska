@@ -342,25 +342,34 @@ def calculate_power_zones_time(
 
 
 @lru_cache(maxsize=128)
-def get_fri_interpretation(fri: float) -> str:
+def get_fri_interpretation(fri: float, session_duration_min: float = 60) -> str:
     """Get human-readable interpretation of FRI value.
+
+    FIXED: Added session duration parameter to warn about unreliable
+    FRI values for short sessions (< 60 min recommended).
 
     Args:
         fri: Fatigue Resistance Index value
+        session_duration_min: Session duration in minutes (default 60)
 
     Returns:
         Polish interpretation string
     """
+    # FIXED: Add warning for short sessions
+    duration_warning = ""
+    if session_duration_min < 60:
+        duration_warning = " ⚠️ (FRI wymaga min. 60 min sesji!)"
+    
     if fri >= 0.95:
-        return "🟢 Wyjątkowa wytrzymałość (diesel)"
+        return "🟢 Wyjątkowa wytrzymałość (diesel)" + duration_warning
     elif fri >= 0.90:
-        return "🟢 Poziom Pro - świetna wytrzymałość"
+        return "🟢 Poziom Pro - świetna wytrzymałość" + duration_warning
     elif fri >= 0.85:
-        return "🟡 Dobrze wytrenowany amator"
+        return "🟡 Dobrze wytrenowany amator" + duration_warning
     elif fri >= 0.80:
-        return "🟠 Przeciętny poziom"
+        return "🟠 Przeciętny poziom" + duration_warning
     else:
-        return "🔴 Profil sprinterski (niska wytrzymałość)"
+        return "🔴 Profil sprinterski (niska wytrzymałość)" + duration_warning
 
 
 # ============================================================

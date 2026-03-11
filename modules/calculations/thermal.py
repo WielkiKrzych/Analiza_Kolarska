@@ -16,25 +16,28 @@ def calculate_heat_strain_index(df_pl: Union[pd.DataFrame, Any]) -> pd.DataFrame
     - 4-6: Moderate strain  
     - 7-10: High strain (risk of heat illness)
     
+    FIXED: HSI formula now properly weights temperature (70%) over HR (30%)
+    as core temperature is the primary indicator of heat strain.
+    
     Args:
         df_pl: DataFrame with 'core_temperature_smooth' and 'heartrate_smooth'
     
     Returns:
         DataFrame with added 'hsi' column
     """
-    df = ensure_pandas(df_pl)
+    df = ensure_pandas(df_pl).copy()  # FIXED: copy to avoid mutation
     core_col = 'core_temperature_smooth' if 'core_temperature_smooth' in df.columns else None
     
     if not core_col or 'heartrate_smooth' not in df.columns:
         df['hsi'] = None
         return df
     
-    # HSI formula: weighted combination of temperature and HR deviation from baseline
-    # Temperature contribution: (CoreTemp - 37.0) / 2.5 * 5 (max 5 points)
-    # HR contribution: (HR - 60) / 120 * 5 (max 5 points)
+    # HSI formula: weighted combination - Temperature 70%, HR 30%
+    # Temperature contribution: (CoreTemp - 37.0) / 2.5 * 7 (max 7 points)
+    # HR contribution: (HR - 60) / 120 * 3 (max 3 points)
     df['hsi'] = (
-        (5 * (df[core_col] - 37.0) / 2.5) + 
-        (5 * (df['heartrate_smooth'] - 60.0) / 120.0)
+        (7 * (df[core_col] - 37.0) / 2.5) + 
+        (3 * (df['heartrate_smooth'] - 60.0) / 120.0)
     ).clip(0.0, 10.0)
     
     return df

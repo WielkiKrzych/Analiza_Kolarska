@@ -152,7 +152,8 @@ if uploaded_file is not None:
             # Extract intermediate results from metrics (DIP: metrics acts as a container here)
             decoupling_percent = metrics.pop("_decoupling_percent", 0.0)
             drift_z2 = metrics.pop("_drift_z2", 0.0)
-            df_clean_pl = metrics.pop("_df_clean_pl", df_raw)
+            # FIXED: _df_clean_pl removed from metrics - use df_raw directly
+            df_clean_pl = df_raw
 
             state.set_data_loaded()
 
@@ -216,11 +217,16 @@ if uploaded_file is not None:
             bg_color = "rgba(149, 165, 166, 0.2)"
             msg = f"Typ sesji: <b>{session_type}</b>"
 
+        # FIXED: Escape session_type for defense-in-depth even though it's an enum
+        import html
+        safe_session_type = html.escape(str(session_type))
+        safe_msg = f"Typ sesji: <b>{safe_session_type}</b>"
+
         st.markdown(
             f"""
         <div style="background: linear-gradient(90deg, {bg_color}, transparent); 
                     padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; display: inline-block;">
-            <span style="font-size: 1.1em;">{session_type.emoji} {msg}</span>
+            <span style="font-size: 1.1em;">{session_type.emoji} {safe_msg}</span>
         </div>
         """,
             unsafe_allow_html=True,
@@ -260,8 +266,8 @@ if uploaded_file is not None:
                 rider_weight,
                 vt1_watts,
                 vt2_watts,
-                0,
-                0,
+                vt1_watts,  # FIXED: lt1_watts - use VT1 as proxy (VT1 ≈ LT1)
+                vt2_watts,  # FIXED: lt2_watts - use VT2 as proxy (VT2 ≈ LT2)
             )
 
     with tab_performance:

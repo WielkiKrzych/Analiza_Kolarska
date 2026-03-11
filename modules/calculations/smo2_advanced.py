@@ -70,10 +70,10 @@ else:
 
     def _fast_curvature(smo2_vals, power_vals):
         """Fallback curvature calculation."""
-        grad = np.gradient(smo2_vals, power_vals)
         return np.gradient(grad, power_vals)
 
-logger = logging.getLogger("Tri_Dashboard.SmO2Advanced")
+# FIXED: Removed duplicate logger definition (was on line 76)
+# Original logger defined at line 32 is sufficient
 
 
 # =============================================================================

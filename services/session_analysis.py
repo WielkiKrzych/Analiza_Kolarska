@@ -95,7 +95,16 @@ def calculate_extended_metrics(
 
     if "watts" in df.columns:
         metrics["np"] = calculate_normalized_power(df)
-        metrics["work_kj"] = df["watts"].sum() / 1000
+        # FIXED: Work calculation now accounts for non-1s sample intervals
+        # Work = sum(watts * dt) / 1000 (kJ)
+        if "time" in df.columns and len(df) > 1:
+            # Calculate actual time delta for non-uniform sampling
+            time_diffs = df["time"].diff().dropna()
+            avg_interval = time_diffs.mean() if len(time_diffs) > 0 else 1.0
+            metrics["work_kj"] = df["watts"].sum() * avg_interval / 1000
+        else:
+            # Fallback: assume 1s samples
+            metrics["work_kj"] = df["watts"].sum() / 1000
         metrics["carbs_total"] = estimate_carbs_burned(df, vt1_watts, vt2_watts)
 
         # Power Duration Curve & VLamax estimation
@@ -104,13 +113,26 @@ def calculate_extended_metrics(
             estimate_vlamax_from_pdc(pdc, rider_weight) if pdc and rider_weight > 0 else 0
         )
 
-        # VO2max estimation
+        # VO2max estimation with GE (Gross Efficiency) correction
+        # Standard ACSM formula: VO2 = (power * 10.8 + 3.5) ml/kg/min
+        # Add GE correction: if efficiency differs from 21%, adjust estimate
         mmp_5m = df["watts"].rolling(Config.ROLLING_WINDOW_5MIN).mean().max()
         try:
             mmp_scalar = float(mmp_5m)
             if np.isfinite(mmp_scalar) and rider_weight > 0:
                 power_per_kg = mmp_scalar / rider_weight
-                metrics["vo2_max_est"] = 16.61 + 8.87 * power_per_kg
+                # Base formula (assumes 21% GE)
+                vo2_base = 10.8 * power_per_kg + 3.5
+                # Apply GE correction if ef_factor available
+                if ef_factor and ef_factor > 0:
+                    # ef_factor = watts/bpm; estimate individual GE
+                    # Typical ef_factor at threshold ~2.5-3.5 W/bpm
+                    # GE ≈ 21% * (ef_factor / 3.0)
+                    ge_ratio = min(1.3, max(0.7, ef_factor / 3.0))
+                    vo2_corrected = vo2_base / ge_ratio
+                    metrics["vo2_max_est"] = round(vo2_corrected, 1)
+                else:
+                    metrics["vo2_max_est"] = round(vo2_base, 1)
             else:
                 metrics["vo2_max_est"] = 0
         except (ValueError, TypeError):
@@ -158,6 +180,8 @@ def _calculate_average_pulse_power(df: pd.DataFrame) -> float:
 
 def apply_smo2_smoothing(df: pd.DataFrame) -> pd.DataFrame:
     """Apply smoothing to SmO2 data if present.
+    
+    FIXED: Now returns a copy to avoid mutating input DataFrame.
 
     Args:
         df: DataFrame with optional 'smo2' column
@@ -165,6 +189,8 @@ def apply_smo2_smoothing(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with 'smo2_smooth_ultra' column added if smo2 exists
     """
+    # FIXED: Create a copy to avoid mutating input DataFrame
+    df = df.copy()
     if "smo2" in df.columns:
         df["smo2_smooth_ultra"] = (
             df["smo2"].rolling(window=Config.ROLLING_WINDOW_60S, center=True, min_periods=1).mean()

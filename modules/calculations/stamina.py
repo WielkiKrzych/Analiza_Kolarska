@@ -59,6 +59,11 @@ def calculate_stamina_score(
 def estimate_vlamax_from_pdc(pdc: Dict[int, float], weight: float) -> Optional[float]:
     """Estimate VLamax from Power Duration Curve shape.
 
+    ⚠️ DISCLAIMER: This is a SIMPLIFIED estimation model.
+    True VLamax requires laboratory testing with blood lactate analysis.
+    This estimate has significant individual variability (±30%).
+    Use for trend tracking only, not for precise training prescription.
+
     Args:
         pdc: Power Duration Curve dict (duration -> watts)
         weight: Rider weight in kg
@@ -113,22 +118,30 @@ def get_stamina_interpretation(score: float) -> str:
 def get_vlamax_interpretation(vlamax: float) -> str:
     """Get human-readable interpretation of VLamax estimate.
 
+    ⚠️ DISCLAIMER: This is a SIMPLIFIED estimation model.
+    True VLamax requires laboratory testing with blood lactate analysis.
+    This estimate has significant individual variability (±30%).
+    Use for trend tracking only, not for precise training prescription.
+
     Args:
         vlamax: Estimated VLamax in mmol/L/s
 
     Returns:
         Polish interpretation string with training recommendations
     """
+    # Add disclaimer suffix to all interpretations
+    disclaimer = " (±30% niepewność - testy lab. wymagane)"
+    
     if vlamax >= 0.9:
-        return "⚡ Sprinter - wysoka glikoliza (pracuj nad wytrzymałością)"
+        return "⚡ Sprinter - wysoka glikoliza (pracuj nad wytrzymałością)" + disclaimer
     elif vlamax >= 0.7:
-        return "🔥 Puncheur - zbalansowany profil"
+        return "🔥 Puncheur - zbalansowany profil" + disclaimer
     elif vlamax >= 0.5:
-        return "🚴 All-rounder - dobra baza tlenowa"
+        return "🚴 All-rounder - dobra baza tlenowa" + disclaimer
     elif vlamax >= 0.35:
-        return "⛰️ Climber/TT - niska glikoliza (pracuj nad sprintami)"
+        return "⛰️ Climber/TT - niska glikoliza (pracuj nad sprintami)" + disclaimer
     else:
-        return "🐢 Diesel - bardzo niska glikoliza"
+        return "🐢 Diesel - bardzo niska glikoliza" + disclaimer
 
 
 def calculate_aerobic_contribution(

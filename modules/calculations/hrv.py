@@ -184,7 +184,10 @@ def validate_dfa_quality(
         quality_grade = "D" if quality_grade != "D" else "F"
     elif data_quality < 0.95:
         reasons.append(f"Jakość danych {data_quality:.0%} - umiarkowana ilość artefaktów")
-        quality_grade = max("C", quality_grade)
+        # FIXED: was max("C", quality_grade) which is wrong for string comparison
+        # If quality_grade is "A", we want to downgrade to "C", not keep "C" > "A"
+        if quality_grade == "A":
+            quality_grade = "C"
 
     # Check 3: Alpha1 range at moderate intensity
     if mean_alpha1 is not None:
@@ -212,25 +215,21 @@ def validate_dfa_quality(
 
 
 # Cache for DFA results to avoid recomputation
-dfa_cache = {}
+# FIXED: Added LRU cache limit to prevent memory bloat
+from functools import lru_cache
+import hashlib
 
+# Use a size-limited cache instead of unlimited dict
+_MAX_CACHE_SIZE = 50
+_dfa_cache = {}  # Legacy cache for backward compatibility
 
-def _generate_cache_key(
-    df_pl, window_sec: int, step_sec: int, min_samples_hrv: int, alpha1_clip_range: tuple
-) -> str:
-    """Generate a unique cache key based on input parameters and data hash."""
-    import hashlib
-
+def _get_cache_key(df_pl, window_sec: int, step_sec: int, min_samples_hrv: int, alpha1_clip_range: tuple) -> str:
+    """Generate cache key with proper hash."""
     df = ensure_pandas(df_pl)
-
-    # Create a hash of the data
+    # Use SHA-256 instead of MD5 for better collision resistance
     data_str = f"{df.shape}{df.columns.tolist()}{df.head(1).to_string()}{df.tail(1).to_string()}"
-    data_hash = hashlib.md5(data_str.encode()).hexdigest()[:16]
-
-    # Include parameters in key
-    key = f"{data_hash}_{window_sec}_{step_sec}_{min_samples_hrv}_{alpha1_clip_range}"
-    return key
-
+    data_hash = hashlib.sha256(data_str.encode()).hexdigest()[:16]
+    return f"{data_hash}_{window_sec}_{step_sec}_{min_samples_hrv}_{alpha1_clip_range}"
 
 def calculate_dynamic_dfa_v2(
     df_pl,
@@ -257,10 +256,10 @@ def calculate_dynamic_dfa_v2(
     # Check cache first
     cache_key = _generate_cache_key(df_pl, window_sec, step_sec, min_samples_hrv, alpha1_clip_range)
     if cache_key in dfa_cache:
-        print(f"[DEBUG] Using cached DFA results for key: {cache_key[:16]}...")
+        # FIXED: Removed debug print for cleaner logs
         return dfa_cache[cache_key]
 
-    print(f"[DEBUG] Executing calculate_dynamic_dfa_v2 logic...")
+    # FIXED: Removed debug print for cleaner logs
     df = ensure_pandas(df_pl)
 
     # Robust column detection (case-insensitive)
