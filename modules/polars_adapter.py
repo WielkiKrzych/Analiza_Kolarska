@@ -99,13 +99,31 @@ class PolarsAdapter:
         result = self._df.select(pl.col(col).rolling_mean(window_size=window, min_periods=1))
         return result.to_pandas()[col].values
 
-    def filter(self, condition: str) -> "PolarsAdapter":
-        """Filter rows based on condition."""
-        if not self._is_polars:
-            return PolarsAdapter(self._df.query(condition))
+    def filter(self, col: str, op: str, value: float) -> "PolarsAdapter":
+        """Filter rows based on structured condition.
 
-        # Parse simple conditions for Polars
-        result = self._df.filter(eval(f"pl.{condition}"))
+        Args:
+            col: Column name to filter on
+            op: Comparison operator ('>', '<', '>=', '<=', '==', '!=')
+            value: Value to compare against
+
+        Returns:
+            New PolarsAdapter with filtered rows
+        """
+        _OPERATORS = {
+            ">": "gt", "<": "lt", ">=": "ge", "<=": "le", "==": "eq", "!=": "ne",
+        }
+        if op not in _OPERATORS:
+            raise ValueError(f"Unsupported operator: {op!r}. Use one of {list(_OPERATORS)}")
+
+        if not self._is_polars:
+            pandas_op = f"__{_OPERATORS[op]}__"
+            mask = getattr(self._df[col], pandas_op)(value)
+            return PolarsAdapter(self._df[mask].copy())
+
+        polars_op = _OPERATORS[op]
+        expr = getattr(pl.col(col), polars_op)(value)
+        result = self._df.filter(expr)
         return PolarsAdapter(result)
 
     def sort(self, by: str, descending: bool = False) -> "PolarsAdapter":

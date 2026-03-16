@@ -39,14 +39,18 @@ FIT_STRING = 0x07
 
 class FitExporter:
     """Creates FIT files from training data."""
-    
+
     # FIT timestamp epoch (1989-12-31)
     FIT_EPOCH = datetime(1989, 12, 31, 0, 0, 0)
-    
-    def __init__(self):
+
+    # Default serial number; override per-export for platform deduplication
+    DEFAULT_SERIAL_NUMBER = 0
+
+    def __init__(self, serial_number: Optional[int] = None):
         self._buffer = BytesIO()
         self._data_size = 0
         self._local_msg_map = {}
+        self._serial_number = serial_number if serial_number is not None else self.DEFAULT_SERIAL_NUMBER
     
     def export(
         self, 
@@ -160,7 +164,7 @@ class FitExporter:
             4,          # type = activity
             1,          # manufacturer = Garmin
             1,          # product
-            12345678,   # serial number
+            self._serial_number,  # serial number (unique per device/export)
             timestamp   # time created
         )
         self._write_data(MSG_FILE_ID, data)

@@ -207,23 +207,56 @@ python -m pytest tests/ -v
 
 ---
 
-## 🔒 Bezpieczeństwo i Jakość Kodu (v0.3.0)
+## 🔒 Bezpieczeństwo i Jakość Kodu (v0.4.0)
 
-### Najnowsze Poprawki Bezpieczeństwa
-- **XSS Protection** — `html.escape()` dla wszystkich user inputs w UI
-- **Path Traversal Prevention** — Walidacja ścieżek plików z `is_relative_to()`
-- **Input Mutation Prevention** — Kopiowanie dict/DataFrame przed modyfikacją
+### Krytyczne Poprawki Bezpieczeństwa
+- **RCE Elimination** — Usunięto `eval()` z `polars_adapter.py`, zastąpiono typowanym API `filter(col, op, value)`
+- **XSS Protection** — `html.escape()` dla wszystkich user inputs w UI (`components.py`, `app.py`)
+- **Path Traversal Prevention** — Sanitizacja nazw plików w `notes.py` (usuwanie `../`, `/`, `\`)
+- **Input Mutation Prevention** — Kopiowanie DataFrame przed modyfikacją w `pipeline.py`, `utils.py`
 
 ### Stabilność Kodu
-- **NameError Fix** — Poprawiona inicjalizacja `analysis_df` w `persistence.py`
-- **Deprecated API** — Zamieniono `.fillna(method=...)` na `.ffill()/.bfill()`
-- **Logging** — Dodano warning przy nieudanym resamplingu
-- **Dead Code Removal** — Usunięto nieużywane zmienne w `ml_logic.py`
+- **NameError Fix** — Dodano brakujący `import logging` + `logger` w `data_processing.py`
+- **Dead Code Removal** — Usunięto duplikaty kodu w `ml_logic.py`, `utils.py`, `persistence.py`
+- **Unreachable Code** — Naprawiony nieosiągalny `except` block w `data_processing.py`
+- **Logging** — Zamieniono 40+ wywołań `print()` na `logger.info/warning/error` w modułach raportowania
+- **Error Handling** — Dodano `try/except` w `notes.py` (`load_notes`, `save_notes`)
+- **File Identity** — `hashlib.md5` zamiast `hash()` dla deterministic file hashing w `app.py`
 
 ### Dependency Management
 - **Version Constraints** — `mlx>=0.5.0,<1.0.0`, `kaleido>=0.2.1`
 - **Optional Dependencies** — pytest przeniesiony do `[project.optional-dependencies]`
 - **Proper .gitignore** — Wykluczenia dla danych wrażliwych (`*.db`, `*.npz`, `user_settings.json`)
+
+---
+
+## 🔧 Changelog (v0.4.0)
+
+### 🔴 Critical Security Fixes
+- **RCE via `eval()`** — Usunięto `eval(f"pl.{condition}")` z `polars_adapter.py`; nowe API: `filter(col, op, value)` z typowanymi parametrami
+- **Audit Trail** — Zamieniono `print()` na `logger` w security-gating (`persistence.py:176,182`) — teraz decyzje gatingu są logowane z timestamp i severity
+
+### 🟠 High Priority Fixes
+- **Duplicate Docstring** — Usunięto zduplikowany body w `normalize_columns_pandas()` (`utils.py`)
+- **Missing Logger** — Dodano `import logging` + `logger` w `data_processing.py` (eliminacja `NameError`)
+- **Unreachable Except** — Usunięto nieosiągalny drugi `except` block w `data_processing.py`
+- **Dead Code** — Usunięto zduplikowany `save_model` body + bug `sub_v` jako klucz w `ml_logic.py`
+- **Path Traversal** — Sanitizacja `../`, `/`, `\` z nazw plików w `notes.py`; `NOTES_DIR` resolved do project root
+- **XSS** — `html.escape()` na `group`/`section` w `show_breadcrumb()` (`components.py`)
+- **Hardcoded Serial** — Zamieniono `12345678` na konfigurowalny `serial_number` w `fit_exporter.py`
+- **Error Handling** — Dodano `try/except` z logowaniem w `load_notes()`/`save_notes()` (`notes.py`)
+- **Print→Logger** — Zamieniono 40+ `print()` na `logger` w `persistence.py`, `figures/__init__.py`, `builder.py`, `summary_pdf.py`
+
+### 🟡 Medium Priority Fixes
+- **DataFrame Mutation** — `validate_test()` teraz kopiuje DataFrame przed modyfikacją kolumn (`pipeline.py`)
+- **Settings Contract** — `save_settings()` zwraca `False` zamiast `True` gdy persistence wyłączone (`settings.py`)
+- **Duplicate Import** — Usunięto zduplikowany `RAMP_METHOD_VERSION` import i `logger` w `persistence.py`
+- **File Hash** — `hashlib.md5(content)` zamiast `hash(name+size)` w `app.py`
+
+### 🟢 Low Priority Fixes
+- **Safe Msg** — `safe_msg` zachowuje pełny komunikat z confidence ramp testu zamiast nadpisywania (`app.py`)
+- **Dead Assignment** — Usunięto nieużywane `max_hr` w `app.py:328`
+- **Duplicate Imports** — Wyczyszczone w `persistence.py`
 
 ---
 

@@ -1,3 +1,4 @@
+import hashlib
 import streamlit as st
 import os
 import logging
@@ -115,8 +116,10 @@ if uploaded_file is not None:
 
             # --- SESSION TYPE CLASSIFICATION (MUST run first) ---
 
-            # Check if we already processed this file
-            current_file_hash = hash(uploaded_file.name + str(uploaded_file.size))
+            # Check if we already processed this file (content-based hash)
+            uploaded_file.seek(0)
+            current_file_hash = hashlib.md5(uploaded_file.read()).hexdigest()
+            uploaded_file.seek(0)
             cached_hash = st.session_state.get("current_file_hash")
             
             if cached_hash != current_file_hash:
@@ -217,16 +220,17 @@ if uploaded_file is not None:
             bg_color = "rgba(149, 165, 166, 0.2)"
             msg = f"Typ sesji: <b>{session_type}</b>"
 
-        # FIXED: Escape session_type for defense-in-depth even though it's an enum
-        import html
-        safe_session_type = html.escape(str(session_type))
-        safe_msg = f"Typ sesji: <b>{safe_session_type}</b>"
+        # Escape msg for defense-in-depth (msg is built from trusted enum values,
+        # but we sanitize to prevent any future XSS if inputs change)
+        import html as html_lib
+        safe_msg = html_lib.escape(msg).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+        safe_emoji = html_lib.escape(str(session_type.emoji))
 
         st.markdown(
             f"""
-        <div style="background: linear-gradient(90deg, {bg_color}, transparent); 
+        <div style="background: linear-gradient(90deg, {bg_color}, transparent);
                     padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; display: inline-block;">
-            <span style="font-size: 1.1em;">{session_type.emoji} {safe_msg}</span>
+            <span style="font-size: 1.1em;">{safe_emoji} {safe_msg}</span>
         </div>
         """,
             unsafe_allow_html=True,
@@ -325,7 +329,6 @@ if uploaded_file is not None:
             render_tab_content("hrv", df_clean_pl)
         with t2:
             render_tab_content("smo2", df_plot, training_notes, uploaded_file.name)
-        max_hr = int(208 - 0.7 * rider_age) if rider_age else 185
         with t3:
             render_tab_content("vent", df_plot, training_notes, uploaded_file.name)
         with t4:

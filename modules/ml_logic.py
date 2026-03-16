@@ -86,15 +86,6 @@ if MLX_AVAILABLE:
     def save_model(model, filepath: str) -> None:
         """Zapisuje wagi modelu do pliku."""
         mx.savez(filepath, **dict(mlx.utils.tree_flatten(model.parameters())))
-        """Zapisuje wagi modelu do pliku."""
-        flattened_params = {}
-        for k, v in model.parameters().items():
-            if isinstance(v, dict):
-                 for sub_k, sub_v in v.items():
-                     flattened_params[f"{k}.{sub_v}"] = sub_v
-            else:
-                flattened_params[k] = v
-        mx.savez(filepath, **dict(mlx.utils.tree_flatten(model.parameters())))
 
     def load_model(model, filepath: str, callback: Optional[TrainingCallback] = None) -> bool:
         """Ładuje wagi modelu z pliku.

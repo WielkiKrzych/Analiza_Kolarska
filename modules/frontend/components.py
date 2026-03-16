@@ -3,8 +3,10 @@ Frontend Components Module.
 
 Reusable UI components (widgets) for the application.
 """
+import html as html_lib
 import streamlit as st
 from typing import Dict, Any
+
 
 class UIComponents:
     """Namespace for reusable UI components."""
@@ -12,19 +14,21 @@ class UIComponents:
     @staticmethod
     def show_breadcrumb(group: str, section: str = None) -> None:
         """Render a breadcrumb navigation aid."""
+        safe_group = html_lib.escape(str(group))
         if section:
+            safe_section = html_lib.escape(str(section))
             html = f'''
             <div class="breadcrumb-nav">
-                🏠 Dashboard <span class="separator">›</span> 
-                {group} <span class="separator">›</span> 
-                <span class="current">{section}</span>
+                Dashboard <span class="separator">›</span>
+                {safe_group} <span class="separator">›</span>
+                <span class="current">{safe_section}</span>
             </div>
             '''
         else:
             html = f'''
             <div class="breadcrumb-nav">
-                🏠 Dashboard <span class="separator">›</span> 
-                <span class="current">{group}</span>
+                Dashboard <span class="separator">›</span>
+                <span class="current">{safe_group}</span>
             </div>
             '''
         st.markdown(html, unsafe_allow_html=True)

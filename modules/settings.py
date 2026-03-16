@@ -25,9 +25,12 @@ class SettingsManager:
         return self.default_settings
 
     def save_settings(self, settings_dict):
-        """Settings persistence is disabled to enforce hardcoded defaults."""
-        # Intentionally do nothing
-        return True
+        """Settings persistence is disabled to enforce hardcoded defaults.
+
+        Returns False to indicate that settings were NOT persisted to disk.
+        Session state is still updated separately via update_from_ui().
+        """
+        return False
 
     def get_ui_values(self):
         """Pomocnik do pobierania wartości do UI (Session State lub Load)."""
