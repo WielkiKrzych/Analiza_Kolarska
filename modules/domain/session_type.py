@@ -23,7 +23,6 @@ _SESSION_TYPE_EMOJI = {
     "UNKNOWN": "❓",
 }
 
-RAMP_CONFIDENCE_THRESHOLD = 0.75
 
 
 class SessionType(Enum):
@@ -42,14 +41,6 @@ class SessionType(Enum):
     def emoji(self) -> str:
         """Return an emoji representation of the session type."""
         return _SESSION_TYPE_EMOJI.get(self.name, "❓")
-    def emoji(self) -> str:
-        """Return an emoji representation of the session type."""
-        return {
-            SessionType.RAMP_TEST: "📈",
-            SessionType.RAMP_TEST_CONDITIONAL: "⚠️",
-            SessionType.TRAINING: "🚴",
-            SessionType.UNKNOWN: "❓",
-        }.get(self, "❓")
 
 
 @dataclass
@@ -182,14 +173,17 @@ def classify_ramp_test(power: pd.Series, step_duration_range: Tuple[int, int] = 
     # 2 criteria -> RAMP_TEST_CONDITIONAL (Confidence 0.50) if key criteria met
     # < 2 criteria -> TRAINING
     
-    is_ramp = met_count >= 2
-    
+    # Use the defined RAMP_CONFIDENCE_THRESHOLD (0.75 = 3/4 criteria)
+    is_ramp = confidence >= RAMP_CONFIDENCE_THRESHOLD
+
     if met_count >= 3:
         status = SessionType.RAMP_TEST
         reason = f"Ramp Test wykryty ({met_count}/{total_criteria} kryteriów)"
-    elif met_count == 2:
+    elif met_count == 2 and "monotonic_increase" in criteria_met and "no_recovery_phases" in criteria_met:
+        # Only conditional if key structural criteria are met
         status = SessionType.RAMP_TEST_CONDITIONAL
         reason = f"Wykryto Ramp Test (warunkowo) - odchylenia w profilu ({met_count}/{total_criteria})"
+        is_ramp = True
     else:
         status = SessionType.TRAINING
         failed_str = ", ".join(criteria_failed)
@@ -222,7 +216,6 @@ def _detect_power_steps(power_arr: np.ndarray, duration_range: Tuple[int, int]) 
     
     # Smooth to find plateaus
     smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().bfill().ffill().values
-    smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().fillna(method='bfill').fillna(method='ffill').values
     
     # Detect step changes using gradient
     gradient = np.gradient(smoothed)
@@ -270,7 +263,7 @@ def _detect_recovery_phases(power_arr: np.ndarray, threshold_pct: float = 0.20) 
         Number of recovery phases detected
     """
     window = 30
-    smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().fillna(method='bfill').fillna(method='ffill').values
+    smoothed = pd.Series(power_arr).rolling(window=window, center=True).mean().bfill().ffill().values
     
     recovery_count = 0
     i = 0
