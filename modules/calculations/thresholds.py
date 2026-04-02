@@ -157,13 +157,11 @@ def analyze_step_test(
                 # Swap values if they appear inverted
                 if result.vt1_watts > result.vt2_watts:
                     result.vt1_watts, result.vt2_watts = result.vt2_watts * 0.75, result.vt1_watts * 1.1
-                    result.warnings = result.warnings or []
-                    result.warnings.append("VT1/VT2 values were inverted and have been corrected")
-            
+                    result.analysis_notes.append("⚠️ VT1/VT2 values were inverted and have been corrected")
+
             # FIXED: Validate non-zero thresholds
             if result.vt1_watts <= 0 or result.vt2_watts <= 0:
-                result.warnings = result.warnings or []
-                result.warnings.append("VT1/VT2 detection returned zero values - check data quality")
+                result.analysis_notes.append("⚠️ VT1/VT2 detection returned zero values - check data quality")
         
         # Process decoupling data if available
         if not df_dec.empty:
