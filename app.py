@@ -224,7 +224,8 @@ if uploaded_file is not None:
         # but we sanitize to prevent any future XSS if inputs change)
         import html as html_lib
         safe_msg = html_lib.escape(msg).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
-        safe_emoji = html_lib.escape(str(session_type.emoji))
+        emoji_val = session_type.emoji if isinstance(session_type.emoji, str) else session_type.emoji()
+        safe_emoji = html_lib.escape(emoji_val)
 
         st.markdown(
             f"""

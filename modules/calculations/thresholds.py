@@ -2,7 +2,10 @@
 Threshold Detection Facade.
 Orchestrates step detection, ventilatory, and metabolic threshold analysis.
 """
+import logging
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from .threshold_types import (
     HysteresisResult, 
