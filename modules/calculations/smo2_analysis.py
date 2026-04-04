@@ -1,0 +1,691 @@
+"""
+Advanced SmO2 Metrics — analysis and limiter classification.
+
+Calculates advanced muscle oxygenation metrics for limiter classification:
+- SmO2 Slope [%/100W]
+- Half-Time Reoxygenation [s]
+- SmO2-HR Coupling Index [r]
+- SmO2 Drift [%]
+
+Classifies limiters:
+- Local (capillarization / occlusion)
+- Central (cardiac output)
+- Metabolic (high glycolysis)
+
+Results are cached per (DataFrame, parameters) to avoid redundant computation.
+"""
+
+import numpy as np
+import pandas as pd
+from typing import Dict, Any, Optional, Tuple, List
+from dataclasses import dataclass, field
+from scipy import stats
+import logging
+
+from modules.cache_utils import make_cache_key as _cache_key
+
+logger = logging.getLogger("Tri_Dashboard.SmO2Advanced")
+
+# Bounded module-level result cache (prevents unbounded memory growth)
+_SMO2_ANALYSIS_CACHE_MAXSIZE = 32
+_smo2_analysis_cache: dict = {}
+
+
+# =============================================================================
+# DATA CLASSES
+# =============================================================================
+
+
+@dataclass
+class SmO2AdvancedMetrics:
+    """Container for advanced SmO2 metrics."""
+
+    # Core metrics
+    slope_per_100w: float = 0.0
+    halftime_reoxy_sec: Optional[float] = None
+    hr_coupling_r: float = 0.0
+    drift_pct: float = 0.0
+
+    # Limiter classification
+    limiter_type: str = "unknown"
+    limiter_confidence: float = 0.0
+
+    # Interpretation
+    interpretation: str = ""
+    recommendations: List[str] = field(default_factory=list)
+
+    # Raw data for debugging
+    slope_r2: float = 0.0
+    data_quality: str = "unknown"
+
+    # Feldmann 4-phase model (Phase 1 = initial rise, Phase 2 = stable, Phase 3 = desat, Phase 4 = rapid desat)
+    phase1_to_phase2_power: Optional[float] = None  # Watts at end of initial rise
+    phase1_to_phase2_smo2: Optional[float] = None  # SmO2 at phase transition
+
+    # SmO2min & VO2peak proxy (Feldmann 2022, R²=0.85)
+    smo2_min: Optional[float] = None
+    smo2_min_power: Optional[float] = None
+    smo2_min_time: Optional[float] = None
+    vo2max_est_mlkg: Optional[float] = None
+    smo2min_confidence: str = ""
+
+
+# =============================================================================
+# LIMITER THRESHOLDS
+# =============================================================================
+
+LIMITER_THRESHOLDS = {
+    "slope_severe": -8.0,
+    "slope_moderate": -4.0,
+    "halftime_fast": 30.0,
+    "halftime_slow": 90.0,
+    "coupling_strong": -0.7,
+    "coupling_weak": -0.3,
+}
+
+
+# =============================================================================
+# METRIC CALCULATIONS
+# =============================================================================
+
+
+def detect_feldmann_phase_transition(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    power_col: str = "watts",
+    window: int = 10,
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Detect Phase 1 -> Phase 2 transition in Feldmann 4-phase model.
+
+    Feldmann 4-phase model (2022):
+    - Phase 1: Initial SmO2 rise (hyperemia/warm-up)
+    - Phase 2: Stable SmO2 (plateau)
+    - Phase 3: Linear desaturation (T1/T2 zone)
+    - Phase 4: Rapid desaturation (above T2)
+
+    This function detects where Phase 1 ends (peak SmO2 before decline starts).
+
+    Returns: (power_at_transition, smo2_at_transition) or (None, None) if not detectable
+    """
+    if smo2_col not in df.columns or power_col not in df.columns:
+        return None, None
+
+    smo2 = df[smo2_col].values
+    power = df[power_col].values
+
+    if len(smo2) < window * 3:
+        return None, None
+
+    from scipy.ndimage import uniform_filter1d
+
+    smo2_smooth = uniform_filter1d(smo2, size=window)
+
+    early_cutoff = max(window * 2, len(smo2) // 4)
+    early_smo2 = smo2_smooth[:early_cutoff]
+
+    if len(early_smo2) == 0:
+        return None, None
+
+    peak_idx = np.argmax(early_smo2)
+
+    if peak_idx >= len(smo2) - window:
+        return None, None
+
+    post_peak_smo2 = smo2_smooth[peak_idx : peak_idx + window * 2]
+    if len(post_peak_smo2) < window:
+        return None, None
+
+    slope_after_peak = np.polyfit(np.arange(len(post_peak_smo2)), post_peak_smo2, 1)[0]
+
+    if slope_after_peak >= 0:
+        return None, None
+
+    transition_power = float(power[peak_idx])
+    transition_smo2 = float(smo2[peak_idx])
+
+    return transition_power, transition_smo2
+
+
+def calculate_smo2_slope(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    power_col: str = "watts",
+    min_power: float = 100.0,
+) -> Tuple[float, float]:
+    """
+    Calculate SmO2 slope per 100W of power increase.
+
+    Returns:
+        (slope_per_100w, r_squared)
+    """
+    mask = df[power_col] >= min_power
+    if mask.sum() < 10:
+        return 0.0, 0.0
+
+    filtered = df.loc[mask, [power_col, smo2_col]].dropna()
+    if len(filtered) < 10:
+        return 0.0, 0.0
+
+    slope, intercept, r, p, se = stats.linregress(
+        filtered[power_col],
+        filtered[smo2_col],
+    )
+    slope_per_100w = slope * 100
+    r_squared = r**2
+
+    return slope_per_100w, r_squared
+
+
+def calculate_halftime_reoxygenation(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    time_col: str = "seconds",
+    power_col: str = "watts",
+    power_threshold: float = 50.0,
+) -> Optional[float]:
+    """
+    Calculate half-time for SmO2 reoxygenation after ramp ends.
+
+    Finds the point where power drops (end of ramp) and measures
+    how long it takes for SmO2 to recover 50% of its drop.
+
+    Returns:
+        Half-time in seconds, or None if not detectable.
+    """
+    if power_col not in df.columns or smo2_col not in df.columns:
+        return None
+
+    power = df[power_col].values
+    smo2 = df[smo2_col].values
+
+    if time_col in df.columns:
+        time = df[time_col].values
+    elif "time" in df.columns:
+        try:
+            time = pd.to_timedelta(df["time"]).dt.total_seconds().values
+        except Exception:
+            time = np.arange(len(df))
+    else:
+        time = np.arange(len(df))
+
+    peak_idx = np.argmax(power)
+    if peak_idx >= len(power) - 30:
+        return None
+
+    smo2_min_during_ramp = np.min(smo2[:peak_idx])
+    recovery_smo2 = smo2[peak_idx:]
+    recovery_time = time[peak_idx:]
+
+    if len(recovery_smo2) < 30:
+        return None
+
+    drop = smo2[0] - smo2_min_during_ramp
+    if drop <= 0:
+        return None
+
+    half_recovery_target = smo2_min_during_ramp + (drop * 0.5)
+
+    for i, val in enumerate(recovery_smo2):
+        if val >= half_recovery_target:
+            return float(recovery_time[i] - recovery_time[0])
+
+    return None
+
+
+def calculate_hr_coupling_index(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    hr_col: str = "hr",
+    window: int = 30,
+) -> float:
+    """
+    Calculate coupling index between SmO2 and HR.
+
+    High negative correlation = Central limiter (HR rises, SmO2 drops proportionally)
+    Low correlation = Local limiter (SmO2 drops independently of HR)
+
+    Returns:
+        Pearson correlation coefficient (-1 to 1)
+    """
+    if hr_col not in df.columns or smo2_col not in df.columns:
+        return 0.0
+
+    smo2_smooth = df[smo2_col].rolling(window=window, min_periods=1).mean()
+    hr_smooth = df[hr_col].rolling(window=window, min_periods=1).mean()
+
+    valid = pd.DataFrame({"smo2": smo2_smooth, "hr": hr_smooth}).dropna()
+    if len(valid) < 30:
+        return 0.0
+
+    r, _ = stats.pearsonr(valid["smo2"], valid["hr"])
+    return float(r)
+
+
+def calculate_smo2_drift(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    power_col: str = "watts",
+    min_power: float = 100.0,
+) -> float:
+    """
+    Calculate SmO2 drift as percentage change from first half to second half.
+
+    Positive drift = SmO2 increased (recovery)
+    Negative drift = SmO2 decreased (fatigue)
+
+    Returns:
+        Drift percentage (e.g., -7.5 means 7.5% drop)
+    """
+    if smo2_col not in df.columns or power_col not in df.columns:
+        return 0.0
+
+    mask = df[power_col] > min_power
+    if mask.sum() < 20:
+        return 0.0
+
+    filtered = df.loc[mask, smo2_col].dropna()
+    if len(filtered) < 20:
+        return 0.0
+
+    n = len(filtered)
+    mid = n // 2
+    first_half_avg = filtered.iloc[:mid].mean()
+    second_half_avg = filtered.iloc[mid:].mean()
+
+    if first_half_avg == 0:
+        return 0.0
+
+    return float(((second_half_avg - first_half_avg) / first_half_avg) * 100)
+
+
+def calculate_smo2min(df: pd.DataFrame, smo2_col: str, power_col: str, time_col: str) -> dict:
+    """Calculate SmO2 minimum and estimate VO2peak proxy.
+
+    Feldmann et al. 2022 showed SmO2min strongly correlates with VO2peak
+    during cycling (R²=0.85). This provides a non-invasive fitness estimate.
+
+    Args:
+        df: DataFrame with SmO2, power, and time columns
+        smo2_col: Name of SmO2 column
+        power_col: Name of power column
+        time_col: Name of time column
+
+    Returns:
+        dict with smo2_min, smo2_min_power, smo2_min_time, vo2max_est_mlkg,
+        confidence (low/medium/high based on R²=0.85 model)
+    """
+    if df.empty or smo2_col not in df.columns:
+        return {}
+
+    smo2_vals = df[smo2_col].dropna()
+    if len(smo2_vals) < 10:
+        return {}
+
+    smo2_min = float(smo2_vals.min())
+    smo2_min_idx = smo2_vals.idxmin()
+
+    result = {
+        "smo2_min": smo2_min,
+    }
+
+    if power_col in df.columns and smo2_min_idx in df.index:
+        result["smo2_min_power"] = (
+            float(df.loc[smo2_min_idx, power_col])
+            if pd.notna(df.loc[smo2_min_idx, power_col])
+            else None
+        )
+
+    if time_col in df.columns and smo2_min_idx in df.index:
+        result["smo2_min_time"] = (
+            float(df.loc[smo2_min_idx, time_col])
+            if pd.notna(df.loc[smo2_min_idx, time_col])
+            else None
+        )
+
+    # VO2max estimation from SmO2min (Feldmann 2022, cycling-specific)
+    # Model: VO2max (ml/kg/min) ≈ 88.2 - 0.62 × SmO2min (%)
+    # Derived from R²=0.85 correlation (estimation only, not clinical grade)
+    if 10 <= smo2_min <= 80:
+        vo2max_est = 88.2 - 0.62 * smo2_min
+        result["vo2max_est_mlkg"] = round(vo2max_est, 1)
+        # Confidence based on how well SmO2min represents the model range
+        if 15 <= smo2_min <= 55:
+            result["confidence"] = "medium"
+        else:
+            result["confidence"] = "low"
+
+    return result
+
+
+# =============================================================================
+# LIMITER CLASSIFICATION
+# =============================================================================
+
+
+def _generate_interpretation(
+    limiter_type: str,
+    metrics: SmO2AdvancedMetrics,
+    scores: Dict[str, float],
+) -> str:
+    """Generate coach-oriented interpretation text."""
+    slope = metrics.slope_per_100w
+    halftime = metrics.halftime_reoxy_sec
+    coupling = metrics.hr_coupling_r
+
+    if limiter_type == "local":
+        base = "Ograniczenie obwodowe – kapilaryzacja mięśniowa"
+        detail = f"SmO₂ spada o {abs(slope):.1f}%/100W – mięsień szybko wyczerpuje tlen lokalnie. "
+        if halftime and halftime > 60:
+            detail += f"Powolna reoksygenacja ({halftime:.0f}s) potwierdza słabą kapilaryzację. "
+        if coupling > -0.5:
+            detail += "Niska korelacja z HR wskazuje na niezależność od układu centralnego. "
+
+    elif limiter_type == "central":
+        base = "Ograniczenie centralne – rzut serca"
+        detail = (
+            f"Silna korelacja SmO₂-HR (r={coupling:.2f}) wskazuje, że serce dyktuje dostawę tlenu. "
+        )
+        if abs(slope) < 4:
+            detail += f"Umiarkowany spadek SmO₂ ({abs(slope):.1f}%/100W) potwierdza wystarczającą kapilaryzację. "
+        if halftime and halftime < 45:
+            detail += f"Szybka reoksygenacja ({halftime:.0f}s) – mięśnie sprawnie odbierają tlen. "
+
+    else:  # metabolic
+        base = "Ograniczenie metaboliczne – dominacja glikolizy"
+        detail = (
+            f"Profil mieszany: spadek SmO₂ {abs(slope):.1f}%/100W przy umiarkowanej korelacji z HR. "
+            "Sugeruje wysoką produkcję mleczanu (VLaMax) jako główny czynnik."
+        )
+        if halftime and 45 < halftime < 90:
+            detail += (
+                f" Umiarkowana reoksygenacja ({halftime:.0f}s) potwierdza stres metaboliczny. "
+            )
+
+    return f"{base}\n{detail}"
+
+
+def classify_smo2_limiter(metrics: SmO2AdvancedMetrics) -> Tuple[str, float, str]:
+    """
+    Classify the primary limiter based on SmO2 metrics.
+
+    Returns:
+        (limiter_type, confidence, interpretation)
+    """
+    scores: Dict[str, float] = {"local": 0.0, "central": 0.0, "metabolic": 0.0}
+
+    slope = metrics.slope_per_100w
+    halftime = metrics.halftime_reoxy_sec
+    coupling = metrics.hr_coupling_r
+
+    if slope < LIMITER_THRESHOLDS["slope_severe"]:
+        scores["local"] += 3.0
+        scores["metabolic"] += 1.0
+    elif slope < LIMITER_THRESHOLDS["slope_moderate"]:
+        scores["local"] += 1.5
+    else:
+        scores["central"] += 1.0
+
+    if halftime is not None:
+        if halftime > LIMITER_THRESHOLDS["halftime_slow"]:
+            scores["local"] += 2.0
+        elif halftime < LIMITER_THRESHOLDS["halftime_fast"]:
+            scores["central"] += 1.5
+        else:
+            scores["metabolic"] += 1.0
+
+    if coupling < LIMITER_THRESHOLDS["coupling_strong"]:
+        scores["central"] += 2.5
+    elif coupling > LIMITER_THRESHOLDS["coupling_weak"]:
+        scores["local"] += 2.0
+    else:
+        scores["metabolic"] += 1.5
+
+    total = sum(scores.values()) or 1.0
+    max_score = max(scores.values())
+    limiter_type = max(scores, key=scores.get)
+    confidence = max_score / total
+    interpretation = _generate_interpretation(limiter_type, metrics, scores)
+
+    return limiter_type, confidence, interpretation
+
+
+def get_recommendations_for_limiter(limiter_type: str) -> List[str]:
+    """Get training recommendations for a given limiter type (~5 per type)."""
+    recommendations = {
+        "local": [
+            "SWEET SPOT: 2×20min @ 88-94% FTP, kadencja 85-95rpm — kapilaryzacja mięśniowa",
+            "SIŁOWY POD LT1: 4×8min @ 50-60rpm, Z3 — poprawa perfuzji przy wysokim momencie",
+            "Z2 CIĄGŁE: 3-4h @ 55-75% FTP — rozbudowa sieci kapilarnej i gęstości mitochondriów",
+            "SmO₂ INTERWAŁY: 5×3min @ Z4 z monitoringiem SmO₂ — utrzymuj >50% w przerwie",
+            "KADENCJA WYSOKA Z3: 3×10min @ 85-90% FTP, 95-105rpm — redukcja okluzji mechanicznej",
+        ],
+        "central": [
+            "VO₂max INTERWAŁY: 5×4min @ 106-120% FTP, przerwa 3min, kadencja 90-100rpm",
+            "TEMPO CIĄGŁE: 60-90min @ 80-90% FTP — podniesienie pojemności minutowej serca",
+            "Z2 DŁUGIE: 4-5h @ 55-70% FTP — budowa objętości wyrzutowej (SV)",
+            "TABATA ZMODYFIKOWANE: 8×40s @ 130% FTP / 20s recovery × 3 serie — stymulacja VO₂max",
+            "PROGRESYWNE: start Z2 → finish Z4, 90min z ostatnimi 20min @ 90-95% FTP — adaptacja centralna",
+        ],
+        "metabolic": [
+            "Z2 BARDZO DŁUGIE: 4-5h @ 60-70% FTP — przesunięcie fat/carb crossover w prawo",
+            "FASTED RIDE: 1.5-2h @ 55-65% FTP na czczo (rano) — stymulacja oksydacji lipidów",
+            "TEMPO POD LT1: 2×30min @ 75-85% FTP — poprawa clearance laktatanu",
+            "Z2 Z FAT ADAPT: 3h @ 60-70% FTP z niskim carb intake (<30g/h) — trening metaboliczny",
+            "DOUBLE DAY: rano 90min Z2 fasted + wieczór 60min Z2 normalnie — podwójny bodziec mitochondrialny",
+        ],
+    }
+    return recommendations.get(
+        limiter_type,
+        [
+            "TRENING ZRÓWNOWAŻONY: 2×Z2 (2-3h) + 1×tempo (2×15min @ Z3) + 1×interwały (4×4min @ Z4)/tydz.",
+            "DIAGNOSTYKA LIMITERA: powtórz test rampowy z pełnym monitoringiem SmO₂/HR/VE",
+            "Z2 BAZOWE: 3×2h @ 55-70% FTP — budowa fundamentu aerobowego",
+            "MICRO-INTERWAŁY: 10×1min @ 100% FTP / 2min recovery — uniwersalny bodziec",
+            "CROSS-TRENING: pływanie/bieg 2×/tydz. — rozwój ogólnej wydolności bez specyficznego obciążenia",
+        ],
+    )
+
+
+# =============================================================================
+# MAIN ANALYSIS FUNCTION
+# =============================================================================
+
+
+def analyze_smo2_advanced(
+    df: pd.DataFrame,
+    smo2_col: str = "SmO2",
+    power_col: str = "watts",
+    hr_col: str = "hr",
+    time_col: str = "seconds",
+) -> SmO2AdvancedMetrics:
+    """
+    Perform complete advanced SmO2 analysis.
+
+    Args:
+        df: DataFrame with SmO2, power, HR, time columns
+        smo2_col: Name of SmO2 column
+        power_col: Name of power column
+        hr_col: Name of HR column
+        time_col: Name of time column
+
+    Returns:
+        SmO2AdvancedMetrics with all calculated values
+    """
+    cache_key = _cache_key(df, smo2_col, power_col, hr_col, time_col)
+    if cache_key in _smo2_analysis_cache:
+        return _smo2_analysis_cache[cache_key]
+
+    metrics = SmO2AdvancedMetrics()
+
+    if smo2_col not in df.columns:
+        metrics.data_quality = "no_smo2"
+        metrics.interpretation = "Brak danych SmO₂."
+        return metrics
+
+    if power_col not in df.columns:
+        metrics.data_quality = "no_power"
+        metrics.interpretation = "Brak danych mocy."
+        return metrics
+
+    metrics.slope_per_100w, metrics.slope_r2 = calculate_smo2_slope(df, smo2_col, power_col)
+    metrics.halftime_reoxy_sec = calculate_halftime_reoxygenation(df, smo2_col, time_col, power_col)
+    metrics.hr_coupling_r = calculate_hr_coupling_index(df, smo2_col, hr_col)
+
+    # Feldmann 4-phase model: detect Phase 1 -> Phase 2 transition
+    metrics.phase1_to_phase2_power, metrics.phase1_to_phase2_smo2 = (
+        detect_feldmann_phase_transition(df, smo2_col, power_col)
+    )
+
+    limiter_type, confidence, interpretation = classify_smo2_limiter(metrics)
+    metrics.limiter_type = limiter_type
+    metrics.limiter_confidence = confidence
+    metrics.interpretation = interpretation
+    metrics.recommendations = get_recommendations_for_limiter(limiter_type)
+    metrics.data_quality = "good" if metrics.slope_r2 > 0.3 else "low"
+    metrics.drift_pct = calculate_smo2_drift(df, smo2_col, power_col)
+
+    smo2min_result = calculate_smo2min(df, smo2_col, power_col, time_col)
+    if smo2min_result:
+        metrics.smo2_min = smo2min_result.get("smo2_min")
+        metrics.smo2_min_power = smo2min_result.get("smo2_min_power")
+        metrics.smo2_min_time = smo2min_result.get("smo2_min_time")
+        metrics.vo2max_est_mlkg = smo2min_result.get("vo2max_est_mlkg")
+        metrics.smo2min_confidence = smo2min_result.get("confidence", "")
+
+    if len(_smo2_analysis_cache) >= _SMO2_ANALYSIS_CACHE_MAXSIZE:
+        _smo2_analysis_cache.pop(next(iter(_smo2_analysis_cache)))
+    _smo2_analysis_cache[cache_key] = metrics
+    return metrics
+
+
+def format_smo2_metrics_for_report(metrics: SmO2AdvancedMetrics) -> Dict[str, Any]:
+    """Format metrics for inclusion in JSON/PDF reports."""
+    result = {
+        "slope_per_100w": round(metrics.slope_per_100w, 2),
+        "halftime_reoxy_sec": round(metrics.halftime_reoxy_sec, 1)
+        if metrics.halftime_reoxy_sec
+        else None,
+        "hr_coupling_r": round(metrics.hr_coupling_r, 3),
+        "drift_pct": round(metrics.drift_pct, 2),
+        "limiter_type": metrics.limiter_type,
+        "limiter_confidence": round(metrics.limiter_confidence, 2),
+        "interpretation": metrics.interpretation,
+        "recommendations": metrics.recommendations,
+        "data_quality": metrics.data_quality,
+        "smo2_min": round(metrics.smo2_min, 1) if metrics.smo2_min is not None else None,
+        "smo2_min_power": metrics.smo2_min_power,
+        "smo2_min_time": metrics.smo2_min_time,
+        "vo2max_est_mlkg": metrics.vo2max_est_mlkg,
+        "smo2min_confidence": metrics.smo2min_confidence,
+    }
+
+
+def interpret_smo2_in_context(
+    avg_smo2: float,
+    interval_type: str,
+    duration_sec: float = 0,
+    recovery_half_time: float = 0,
+) -> dict:
+    """
+    Context-aware SmO2 interpretation based on effort type.
+
+    SmO2 desaturation meaning differs by exercise intensity zone:
+    - Sprint: <25% = normal anaerobic recruitment
+    - VO2max: 30-70% oscillation = dynamic mismatch (normal)
+    - Threshold: 40-60% = balanced supply/demand
+    - Z2: >65% = expected, good aerobic efficiency
+
+    Reference:
+        Perrey, Quaresima, Ferrari (2024). "Muscle Oximetry in Sports Science."
+        Sports Medicine 54(4):975-996. DOI: 10.1007/s40279-023-01987-x
+
+        Sendra-Perez et al. (2023). SmO2 threshold reliability.
+        Scientific Reports 13:12649. ICC 0.80-0.88.
+    """
+    # Default
+    interpretation = "Brak kontekstu"
+    status = "neutral"
+
+    interval_lower = interval_type.lower() if interval_type else ""
+
+    if "sprint" in interval_lower:
+        if avg_smo2 < 25:
+            interpretation = "Normalna rekrutacja anaerobowa — pełna desaturacja w sprincie"
+            status = "normal"
+        elif avg_smo2 < 40:
+            interpretation = "Umiarkowana desaturacja — sprint submaksymalny"
+            status = "info"
+        else:
+            interpretation = "Niska desaturacja w sprincie — sprawdź kalibrację sensora lub pozycję"
+            status = "warning"
+
+    elif "vo2max" in interval_lower or "vo2" in interval_lower:
+        if 25 <= avg_smo2 <= 45:
+            interpretation = "Optymalna desaturacja VO₂max — pełne obciążenie systemu tlenowego"
+            status = "good"
+        elif avg_smo2 < 25:
+            interpretation = (
+                "Bardzo głęboka desaturacja — możliwe ograniczenie lokalne (kapilary/mitochondria)"
+            )
+            status = "warning"
+        else:
+            interpretation = (
+                "Płytka desaturacja VO₂max — intensywność może być za niska lub sensor niepoprawny"
+            )
+            status = "info"
+
+    elif "threshold" in interval_lower or "sweet" in interval_lower:
+        if 40 <= avg_smo2 <= 60:
+            interpretation = "Optymalna strefa progowa — zbalansowane dostarczanie/wykorzystanie O₂"
+            status = "good"
+        elif avg_smo2 < 40:
+            interpretation = (
+                "Głęboka desaturacja na progu — akumulacja mleczanu, ograniczenie peryferyjne"
+            )
+            status = "warning"
+        else:
+            interpretation = "Wysoka saturacja na progu — możliwy subprogowy wysiłek"
+            status = "info"
+
+    elif "endurance" in interval_lower or "tempo" in interval_lower or "z2" in interval_lower:
+        if avg_smo2 >= 65:
+            interpretation = "Optymalna strefa Z2 — dobra efektywność tlenowa"
+            status = "good"
+        elif avg_smo2 >= 50:
+            interpretation = "Umiarkowana desaturacja w Z2 — intensywność przy górnej granicy Z2"
+            status = "info"
+        else:
+            interpretation = (
+                "Niska saturacja w Z2 — intensywność zbyt wysoka lub ograniczenie peryferyjne"
+            )
+            status = "warning"
+
+    else:
+        if avg_smo2 < 30:
+            interpretation = "Głęboka desaturacja — wysoka intensywność"
+            status = "info"
+        elif avg_smo2 > 70:
+            interpretation = "Wysoka saturacja — niska intensywność lub odpoczynek"
+            status = "normal"
+        else:
+            interpretation = "Umiarkowana saturacja"
+            status = "neutral"
+
+    # Recovery quality indicator
+    recovery_note = ""
+    if recovery_half_time > 0:
+        if recovery_half_time < 15:
+            recovery_note = "Szybka reoxygenacja (<15s) — dobra kapilaryzacja"
+        elif recovery_half_time < 30:
+            recovery_note = "Normalna reoxygenacja (15-30s)"
+        else:
+            recovery_note = "Wolna reoxygenacja (>30s) — rozważ pracę nad bazą aerobową"
+
+    return {
+        "interpretation": interpretation,
+        "status": status,
+        "avg_smo2": round(avg_smo2, 1),
+        "interval_type": interval_type,
+        "recovery_note": recovery_note,
+    }

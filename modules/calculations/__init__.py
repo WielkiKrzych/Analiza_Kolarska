@@ -89,6 +89,96 @@ from .stamina import (
     get_durability_interpretation,
 )
 
+from .durability import (
+    calculate_durability_by_season,
+    get_durability_recommendations,
+)
+
+from .w_prime_reconstitution import (
+    compute_w_prime_reconstitution_map,
+    build_reconstitution_table,
+    get_reconstitution_interpretation,
+    ReconstitutionEvent,
+    ReconstitutionSummary,
+)
+
+from .w_prime import (
+    calculate_w_prime_biexp,
+)
+
+from .race_predictor import (
+    predict_race_power,
+    predict_race_duration,
+    generate_race_predictions_table,
+    get_pacing_recommendations,
+    RacePrediction,
+)
+
+from .training_distribution import (
+    calculate_training_distribution,
+    calculate_hr_zones_time,
+    calculate_smo2_zones_time,
+    calculate_training_summary,
+    generate_training_recommendations,
+    get_zone_color_mapping,
+)
+
+from .heat_strain import (
+    calculate_heat_strain_index_enhanced,
+    calculate_heat_strain_summary,
+    generate_heat_strain_recommendations,
+    get_heat_strain_color_mapping,
+)
+
+from .smo2_thresholds import (
+    detect_smo2_thresholds_moxy,
+    SmO2ThresholdResult,
+    check_multi_muscle_mot2_consistency,
+)
+
+from .smo2_analysis import (
+    detect_feldmann_phase_transition,
+    calculate_smo2_slope,
+    calculate_halftime_reoxygenation,
+    calculate_hr_coupling_index,
+    calculate_smo2_drift,
+    calculate_smo2min,
+    classify_smo2_limiter,
+    get_recommendations_for_limiter,
+    analyze_smo2_advanced as analyze_smo2_advanced_detailed,
+    format_smo2_metrics_for_report,
+    interpret_smo2_in_context,
+    SmO2AdvancedMetrics as SmO2AnalysisMetrics,
+)
+
+from .plateau_detector import (
+    detect_plateau,
+    PlateauResult,
+)
+
+from .alert_engine import (
+    Alert,
+    OvertrainingRiskIndex,
+    AlertReport,
+    detect_cardiac_drift,
+    detect_smo2_crash,
+    detect_hrv_suppression,
+    detect_performance_trend_decline,
+    calculate_overtraining_risk,
+    analyze_session_alerts,
+)
+
+from .smo2 import (
+    analyze_smo2_advanced,
+    SmO2AdvancedMetrics as SmO2PkgMetrics,
+    SmO2ThresholdResult,
+    SmO2MetricsCalculator,
+    SmO2LimiterClassifier,
+    detect_smo2_thresholds_moxy as detect_smo2_from_pkg,
+    LIMITER_THRESHOLDS,
+    RECOMMENDATIONS,
+)
+
 from .kinetics import (
     fit_smo2_kinetics,
     get_tau_interpretation,
@@ -163,96 +253,96 @@ from .polars_adapter import (
 # Eksport wszystkich symboli dla import *
 __all__ = [
     # W' Balance
-    'calculate_w_prime_balance',
-    'calculate_w_prime_fast',
+    "calculate_w_prime_balance",
+    "calculate_w_prime_fast",
     # W' Recovery (NEW)
-    'calculate_recovery_score',
-    'get_recovery_recommendation',
-    'estimate_w_prime_reconstitution',
+    "calculate_recovery_score",
+    "get_recovery_recommendation",
+    "estimate_w_prime_reconstitution",
     # HRV
-    'calculate_dynamic_dfa_v2',
+    "calculate_dynamic_dfa_v2",
     # Thermal
-    'calculate_heat_strain_index',
-    'calculate_thermal_decay',
+    "calculate_heat_strain_index",
+    "calculate_thermal_decay",
     # Power - Basic
-    'calculate_normalized_power',
-    'calculate_pulse_power_stats',
+    "calculate_normalized_power",
+    "calculate_pulse_power_stats",
     # Power - Advanced
-    'calculate_power_duration_curve',
-    'calculate_fatigue_resistance_index',
-    'count_match_burns',
-    'calculate_power_zones_time',
-    'get_fri_interpretation',
-    'DEFAULT_PDC_DURATIONS',
+    "calculate_power_duration_curve",
+    "calculate_fatigue_resistance_index",
+    "count_match_burns",
+    "calculate_power_zones_time",
+    "get_fri_interpretation",
+    "DEFAULT_PDC_DURATIONS",
     # Power - TTE & Phenotype (NEW)
-    'estimate_tte',
-    'estimate_tte_range',
-    'classify_phenotype',
-    'get_phenotype_description',
+    "estimate_tte",
+    "estimate_tte_range",
+    "classify_phenotype",
+    "get_phenotype_description",
     # Nutrition
-    'estimate_carbs_burned',
+    "estimate_carbs_burned",
     # Metrics
-    'calculate_metrics',
-    'calculate_advanced_kpi',
-    'calculate_z2_drift',
-    'calculate_vo2max',
-    'calculate_trend',
+    "calculate_metrics",
+    "calculate_advanced_kpi",
+    "calculate_z2_drift",
+    "calculate_vo2max",
+    "calculate_trend",
     # Stamina
-    'calculate_stamina_score',
-    'estimate_vlamax_from_pdc',
-    'get_stamina_interpretation',
-    'get_vlamax_interpretation',
-    'calculate_aerobic_contribution',
+    "calculate_stamina_score",
+    "estimate_vlamax_from_pdc",
+    "get_stamina_interpretation",
+    "get_vlamax_interpretation",
+    "calculate_aerobic_contribution",
     # Durability
-    'calculate_durability_index',
-    'get_durability_interpretation',
+    "calculate_durability_index",
+    "get_durability_interpretation",
     # Kinetics
-    'fit_smo2_kinetics',
-    'get_tau_interpretation',
-    'calculate_o2_deficit',
-    'detect_smo2_breakpoints',
-    'normalize_smo2_series',
-    'detect_smo2_trend',
-    'classify_smo2_context',
-    'calculate_resaturation_metrics',
-    'calculate_signal_lag',
-    'analyze_temporal_sequence',
-    'detect_physiological_state',
-    'generate_state_timeline',
+    "fit_smo2_kinetics",
+    "get_tau_interpretation",
+    "calculate_o2_deficit",
+    "detect_smo2_breakpoints",
+    "normalize_smo2_series",
+    "detect_smo2_trend",
+    "classify_smo2_context",
+    "calculate_resaturation_metrics",
+    "calculate_signal_lag",
+    "analyze_temporal_sequence",
+    "detect_physiological_state",
+    "generate_state_timeline",
     # Thresholds (MCP)
-    'detect_vt_transition_zone',
-    'analyze_step_test',
-    'calculate_training_zones_from_thresholds',
-    'TransitionZone',
-    'ThresholdResult',
-    'StepTestResult',
-    'HysteresisResult',
-    'SensitivityResult',
+    "detect_vt_transition_zone",
+    "analyze_step_test",
+    "calculate_training_zones_from_thresholds",
+    "TransitionZone",
+    "ThresholdResult",
+    "StepTestResult",
+    "HysteresisResult",
+    "SensitivityResult",
     # Repeatability
-    'calculate_cv',
-    'calculate_sem',
-    'classify_reproducibility',
-    'calculate_repeatability_metrics',
-    'compare_session_to_baseline',
+    "calculate_cv",
+    "calculate_sem",
+    "classify_reproducibility",
+    "calculate_repeatability_metrics",
+    "compare_session_to_baseline",
     # Quality
-    'check_signal_quality',
-    'check_step_test_protocol',
-    'check_data_suitability',
+    "check_signal_quality",
+    "check_step_test_protocol",
+    "check_data_suitability",
     # Interpretation
-    'generate_training_advice',
+    "generate_training_advice",
     # Data Processing
-    'process_data',
-    'ensure_pandas',
+    "process_data",
+    "ensure_pandas",
     # Async Runner
-    'run_in_thread',
-    'run_async',
-    'async_wrapper',
-    'AsyncCalculationManager',
+    "run_in_thread",
+    "run_async",
+    "async_wrapper",
+    "AsyncCalculationManager",
     # Polars Adapter
-    'is_polars_available',
-    'to_polars',
-    'to_pandas',
-    'fast_rolling_mean',
-    'fast_normalized_power',
-    'fast_power_duration_curve',
+    "is_polars_available",
+    "to_polars",
+    "to_pandas",
+    "fast_rolling_mean",
+    "fast_normalized_power",
+    "fast_power_duration_curve",
 ]

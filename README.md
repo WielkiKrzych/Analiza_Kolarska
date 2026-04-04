@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python">
   <img src="https://img.shields.io/badge/Streamlit-1.30%2B-red?style=for-the-badge&logo=streamlit" alt="Streamlit">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Tests-159%20passed-brightgreen?style=for-the-badge&logo=pytest" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-157%20passed-brightgreen?style=for-the-badge&logo=pytest" alt="Tests">
 </p>
 
 Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowaną wizualizacją i modelowaniem fizjologicznym.
@@ -16,9 +16,9 @@ Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowan�
 | Moduł | Funkcje |
 |-------|----------|
 | **📊 Overview** | Raport KPI, Podsumowanie sesji, Krzywa mocy |
-| **⚡ Performance** | Power, Biomech, Model (CP/W'), HR, Hematologia, Drift Maps |
+| **⚡ Performance** | Power, Biomech, Model (CP/W'), HR, Hematologia, Drift Maps, **Race Predictor**, **Durability**, **Training Distribution**, **TTE**, **Intervals** |
 | **🧠 Intelligence** | Nutrition, Limiters |
-| **🫀 Physiology** | HRV, SmO2, Ventilation, Thermal |
+| **🫀 Physiology** | HRV, SmO2, Ventilation, Thermal, **W' Reconstitution**, **Heat Strain**, **SmO2 Thresholds** |
 
 ---
 
@@ -49,7 +49,7 @@ Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowan�
    ┌─────────┐   ┌─────────┐   ┌─────────┐
    │   💾    │   │  📈     │   │  📤     │
    │   db/   │   │ reporting│   │ export/ │
-   │ SQLite  │   │         │   │ FIT/CSV │
+   │ SQLite  │   │         │   │FIT/TCX  │
    └─────────┘   └─────────┘   └─────────┘
 ```
 
@@ -70,8 +70,8 @@ Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowan�
 - **NeuroKit2** — Analiza sygnałów biologicznych
 
 ### Storage & Tools
-- **SQLite** — Baza danych sesji
-- **Pytest** — Testy (159 passed)
+- **SQLite** — Baza danych sesji + profile zawodnika
+- **Pytest** — Testy (157 passed)
 
 ---
 
@@ -109,16 +109,48 @@ Analiza_Kolarska/
 │
 ├── modules/
 │   ├── calculations/           🧮 Silnik obliczeniowy
-│   │   ├── power.py           ⚡ Metryki mocy (NP, IF, TSS)
-│   │   ├── hrv.py             💓 Analiza HRV
+│   │   ├── power.py            ⚡ Metryki mocy (NP, IF, TSS)
+│   │   ├── w_prime.py          🔋 W' Balance (Skiba + Caen bi-exp)
+│   │   ├── w_prime_reconstitution.py 🔋 Mapa rekonstytucji W'
+│   │   ├── race_predictor.py   🏁 Predykcja mocy wyścigowej
+│   │   ├── training_distribution.py 📊 Time-in-Zone
+│   │   ├── durability.py       🛡️ Durability Index
+│   │   ├── heat_strain.py      🌡️ Heat Strain Index
+│   │   ├── smo2_thresholds.py  🩸 Progi SmO2
+│   │   ├── smo2_analysis.py    🩸 Zaawansowana analiza SmO2
+│   │   ├── smo2/               🩸 Pakiet SmO2 (classifier, calculator)
+│   │   ├── plateau_detector.py  📈 Detekcja плато
+│   │   ├── alert_engine.py     🚨 Silnik alertów fizjologicznych
+│   │   ├── hrv.py              💓 Analiza HRV
 │   │   ├── smo2_advanced.py    🩸 SmO2 + dekonwolucja
 │   │   ├── ventilatory.py      🫁 VT1/VT2 detection
 │   │   ├── thresholds.py       📐 Wykrywanie progów
+│   │   ├── stamina.py          💪 Stamina Score, VLaMax
+│   │   ├── nutrition.py        🍎 Spalanie węglowodanów
 │   │   └── ...
-│   ├── ui/                    🎨 Komponenty interfejsu
-│   ├── db/                    💾 SQLite session store
-│   ├── reporting/             📈 Generowanie raportów
-│   └── export/                📤 Eksport (FIT, CSV)
+│   ├── ui/                     🎨 Komponenty interfejsu
+│   │   ├── race_predictor_ui.py    🏁 Zakładka Race Predictor
+│   │   ├── durability_ui.py        🛡️ Zakładka Durability
+│   │   ├── heat_strain_ui.py       🌡️ Zakładka Heat Strain
+│   │   ├── w_prime_reconstitution_ui.py 🔋 Zakładka W' Reconstitution
+│   │   ├── training_distribution_ui.py 📊 Zakładka Training Distribution
+│   │   ├── tte_ui.py               ⏱️ Zakładka TTE
+│   │   ├── intervals_ui.py         🔴 Zakładka Intervals
+│   │   ├── smo2_thresholds.py      🩸 Zakładka SmO2 Thresholds
+│   │   ├── alerts.py               🚨 Zakładka Alerts
+│   │   └── ...
+│   ├── db/                     💾 SQLite stores
+│   │   ├── session_store.py        💾 Sesje treningowe
+│   │   ├── athlete_profiles.py     👤 Profile zawodnika (CP, W', VT)
+│   │   └── base.py                 🔧 Baza abstrakcyjna DB
+│   ├── reporting/              📈 Generowanie raportów
+│   ├── export/                 📤 Eksport danych
+│   │   ├── fit_exporter.py         📤 FIT (Garmin/Strava/TP)
+│   │   ├── tcx_generator.py        📤 TCX
+│   │   ├── zone_exporter.py        📤 Strefy CSV
+│   │   └── workout_exporter.py     📤 TrainingPeaks CSV
+│   └── social/                 🌍 Dane referencyjne
+│       └── reference_data.py       📊 Benchmarki percentylowe
 │
 ├── services/
 │   ├── session_analysis.py     🔄 Analiza sesji
@@ -126,7 +158,7 @@ Analiza_Kolarska/
 │
 ├── models/                    📋 Modele danych
 ├── signals/                  🔬 Przetwarzanie sygnałów
-├── tests/                    🧪 Testy (159 passed)
+├── tests/                    🧪 Testy (157 passed)
 └── data/                     💾 Baza danych SQLite
 ```
 
@@ -147,6 +179,11 @@ Analiza_Kolarska/
 | ❤️ HR | Strefy tętna, decay, Z2 drift |
 | 🧬 Hematology | THb, Hct, Fe |
 | 📈 Drift Maps | Mapy dryfu fizjologicznego |
+| 🏁 **Race Predictor** | **Predykcja mocy na zawody (CP/W') z korektami wiatr/temperatura/trasa, pacing** |
+| 🛡️ **Durability** | **Durability Index, sezonowa analiza zmęczenia, rekomendacje treningowe** |
+| 📊 **Training Distribution** | **Time-in-Zone (power/HR/SmO2), balance score, rozkład intensywności** |
+| ⏱️ **TTE** | **Time To Exhaustion — estymacja czasu do wyczerpania na zadanej intensywności** |
+| 🔴 **Intervals** | **Detekcja i klasyfikacja interwałów, Pulse Power, Gross Efficiency** |
 
 ### 🧠 Intelligence
 | Funkcja | Opis |
@@ -161,6 +198,9 @@ Analiza_Kolarska/
 | 🩸 SmO2 | Saturacja mięśniowa, dekonwolucja |
 | 🫁 Ventilation | VT1, VT2, RER, breathing power |
 | 🌡️ Thermal | Temperatura centralna/peryferyjna |
+| 🔋 **W' Reconstitution** | **Mapa wyczerpania/odnowy W', detekcja cykli, tempo regeneracji (Caen 2021)** |
+| 🌡️ **Heat Strain** | **PSI/HSI z korektami środowiskowymi, ocena ryzyka, strategie chłodzenia** |
+| 🩸 **SmO2 Thresholds** | **Detekcja progów SmO2 (LT1/LT2), analiza Feldmann 4-phase, Exp-Dmax** |
 
 ---
 
@@ -189,7 +229,7 @@ Aplikacja automatycznie waliduje jakość danych:
 python -m pytest tests/ -v
 
 # Wynik
-# ====================== 159 passed, 8 warnings ======================
+# ====================== 157 passed, 8 warnings ======================
 ```
 
 ---
@@ -230,7 +270,55 @@ python -m pytest tests/ -v
 
 ---
 
-## 🔧 Changelog (v0.4.0)
+## 🔧 Changelog
+
+### 🆕 v0.5.0 — Migracja funkcji kolarskich z Tri_Dashboard
+
+**Nowe zakładki (10):**
+| Zakładka | Sekcja | Opis |
+|----------|--------|------|
+| 🏁 Race Predictor | ⚡ Performance | Predykcja mocy wyścigowej z korektami środowiskowymi |
+| 🛡️ Durability | ⚡ Performance | Durability Index, analiza sezonowa, rekomendacje |
+| 📊 Training Distribution | ⚡ Performance | Time-in-Zone (power/HR/SmO2), balance score |
+| ⏱️ TTE | ⚡ Performance | Time To Exhaustion na zadanej intensywności |
+| 🔴 Intervals | ⚡ Performance | Detekcja i analiza interwałów |
+| 🔋 W' Reconstitution | 🫀 Physiology | Mapa wyczerpania/odnowy W', cykle regeneracji |
+| 🌡️ Heat Strain | 🫀 Physiology | PSI/HSI z korektami środowiskowymi |
+| 🩸 SmO2 Thresholds | 🫀 Physiology | Detekcja progów SmO2, Exp-Dmax, Feldmann 4-phase |
+| 🚨 Alerts | 🫀 Physiology | Alerty fizjologiczne (cardiac drift, SmO2 crash, HRV) |
+
+**Nowe moduły obliczeniowe (10):**
+- `w_prime_reconstitution.py` — Mapa rekonstytucji W' (Skiba + Caen bi-exponential)
+- `race_predictor.py` — Predykcja mocy wyścigowej z korektami wiatr/temperatura/trasa
+- `training_distribution.py` — Time-in-Zone dla power/HR/SmO2
+- `durability.py` — Durability Index + analiza sezonowa + rekomendacje
+- `heat_strain.py` — Enhanced Heat Strain Index z korektami środowiskowymi
+- `smo2_thresholds.py` — Detekcja progów SmO2 (Moxy, Exp-Dmax)
+- `smo2_analysis.py` — Zaawansowana analiza SmO2 (Feldmann 4-phase, HR coupling)
+- `smo2/` — Pakiet SmO2 (classifier, calculator, types, constants)
+- `plateau_detector.py` — Detekcja плато w trendach
+- `alert_engine.py` — Silnik alertów fizjologicznych
+
+**Nowe moduły eksportu (3):**
+- `tcx_generator.py` — Generowanie plików TCX
+- `zone_exporter.py` — Eksport stref mocy/HR do CSV
+- `workout_exporter.py` — Eksport treningów do TrainingPeaks CSV
+
+**Nowe moduły danych (3):**
+- `db/athlete_profiles.py` — Tabela profili zawodnika (CP, W', VT, antropometria)
+- `db/base.py` — Baza abstrakcyjna dla SQLite stores
+- `social/reference_data.py` — Benchmarki percentylowe kolarstwa
+
+**Adaptacje:**
+- Dodano `calculate_w_prime_biexp` (Caen 2021) do `w_prime.py`
+- Dodano `make_cache_key` do `cache_utils.py`
+- Dodano `detect_exp_dmax`, `detect_smo2_breakpoints` do `smo2_breakpoints.py`
+- Zaktualizowano `__init__.py` (83 eksportowane symbole)
+- Zaktualizowano `app.py` — TabRegistry + rendering nowych zakładek
+
+**Testy:** 157 passed, 0 regresji
+
+### 🔧 Changelog (v0.4.0)
 
 ### 🔴 Critical Security Fixes
 - **RCE via `eval()`** — Usunięto `eval(f"pl.{condition}")` z `polars_adapter.py`; nowe API: `filter(col, op, value)` z typowanymi parametrami
@@ -312,21 +400,15 @@ MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.
 
 ## Uwagi
 
-Ta wersja jest uproszczoną wersją Tri_Dashboard, z której usunięto:
-- Zakładki związane z progami wentylacyjnymi (Vent - Progi, Vent - Progi Manuals)
-- Zakładki związane z progami SmO2 (SmO2 - Progi, SmO2 - Progi Manuals)
+**Zaktualizowano (v0.5.0):** Większość funkcji z Tri_Dashboard została przeniesiona do Analiza Kolarska.
+
+**Nadal nieprzeniesione:**
 - Archiwum testów rampowych (Ramp Archive)
 - AI Coach
 - Generowanie raportów PDF/PNG z sidebar
-- Zakładka Intervals (funkcjonalność przeniesiona do Biomech)
-- Zakładka TTE (Time To Exhaustion)
+- Zakładka Vent - Progi Manuals
 
-**Z zakładki Podsumowanie usunięto:**
-- Model Matematyczny CP
-- Progi Wentylacyjne VT1/VT2
-- Progi SmO2 LT1/LT2
-
-Pozostałe sekcje w Podsumowaniu:
+**Pozostałe sekcje w Podsumowaniu:**
 1. Przebieg Treningu
 2. Wentylacja (VE) i Oddechy (BR)
 3. SmO2 vs THb w czasie
