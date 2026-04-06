@@ -255,6 +255,7 @@ __all__ = [
     # W' Balance
     "calculate_w_prime_balance",
     "calculate_w_prime_fast",
+    "calculate_w_prime_biexp",
     # W' Recovery (NEW)
     "calculate_recovery_score",
     "get_recovery_recommendation",
