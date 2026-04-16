@@ -250,7 +250,7 @@ def calculate_cci(
 # EFFICIENCY CLASSIFICATION
 # =============================================================================
 
-def classify_cardiovascular_efficiency(metrics: CardiovascularMetrics) -> Tuple[str, float, str]:
+def classify_cardiovascular_efficiency(metrics: CardiovascularMetrics) -> Tuple[str, float, str]:  # noqa: C901
     """
     Classify cardiovascular efficiency status.
     

@@ -8,7 +8,7 @@ from modules.calculations.thresholds import analyze_step_test
 from modules.calculations.quality import check_step_test_protocol
 
 
-def render_smo2_manual_thresholds_tab(target_df, training_notes, uploaded_file_name, cp_input):
+def render_smo2_manual_thresholds_tab(target_df, training_notes, uploaded_file_name, cp_input):  # noqa: C901
     """Ręczna edycja progów SmO2 (LT1/LT2) i wizualizacja na wykresie saturacji."""
     st.header("🛠️ Manualna Edycja Progów SmO2 (LT1 / LT2)")
     st.markdown(

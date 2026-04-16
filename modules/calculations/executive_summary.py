@@ -123,7 +123,7 @@ LIMITER_TYPES = {
 }
 
 
-def identify_main_limiter(
+def identify_main_limiter(  # noqa: C901
     thresholds: Dict[str, Any],
     smo2_manual: Dict[str, Any],
     cp_model: Dict[str, Any],
@@ -270,7 +270,7 @@ def identify_main_limiter(
 # SIGNAL AGREEMENT MATRIX
 # =============================================================================
 
-def build_signal_matrix(
+def build_signal_matrix(  # noqa: C901
     thresholds: Dict[str, Any],
     smo2_manual: Dict[str, Any],
     kpi: Dict[str, Any]
@@ -421,7 +421,7 @@ def calculate_confidence_panel(
 # TRAINING DECISION CARDS (Enhanced)
 # =============================================================================
 
-def generate_training_cards(
+def generate_training_cards(  # noqa: C901
     limiter: Dict[str, Any],
     thresholds: Dict[str, Any],
     cp_model: Dict[str, Any],

@@ -22,7 +22,7 @@ def _find_column(df: pd.DataFrame, aliases: list) -> Optional[str]:
             return alias
     return None
 
-def generate_radar_chart(
+def generate_radar_chart(  # noqa: C901
     report_data: Dict[str, Any],
     config: Optional[Any] = None,
     output_path: Optional[str] = None,
@@ -145,7 +145,7 @@ def generate_radar_chart(
     return save_figure(fig, output_path, **cfg)
 
 
-def generate_vlamax_balance_chart(
+def generate_vlamax_balance_chart(  # noqa: C901
     report_data: Dict[str, Any],
     config: Optional[Any] = None,
     output_path: Optional[str] = None,

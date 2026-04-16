@@ -5,7 +5,7 @@ from modules.calculations.repeatability import (
     compare_session_to_baseline
 )
 
-def render_comparison_tab(target_analysis_result: dict = None):
+def render_comparison_tab(target_analysis_result: dict = None):  # noqa: C901
     """
     Render UI for comparing current session metrics with previous sessions or baseline.
     

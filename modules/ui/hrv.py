@@ -11,7 +11,7 @@ importlib.reload(modules.calculations.hrv)
 from modules.calculations.hrv import calculate_dynamic_dfa_v2
 
 
-def render_hrv_tab(df_clean_pl: Any) -> None:
+def render_hrv_tab(df_clean_pl: Any) -> None:  # noqa: C901
     """
     Render the HRV (Heart Rate Variability) analysis tab.
 

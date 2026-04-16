@@ -160,7 +160,7 @@ def select_canonical_vo2max(
     return metric
 
 
-def build_canonical_physiology(
+def build_canonical_physiology(  # noqa: C901
     data: Dict[str, Any], time_series: Optional[Dict[str, List]] = None
 ) -> CanonicalPhysiology:
     """

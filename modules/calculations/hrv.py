@@ -144,7 +144,7 @@ def _fast_dfa_loop(time_values, rr_values, window_sec, step_sec):
 # ============================================================
 
 
-def validate_dfa_quality(
+def validate_dfa_quality(  # noqa: C901
     window_sec: int,
     data_quality: float,
     mean_alpha1: Optional[float],
@@ -231,7 +231,7 @@ def _get_cache_key(df_pl, window_sec: int, step_sec: int, min_samples_hrv: int, 
     data_hash = hashlib.sha256(data_str.encode()).hexdigest()[:16]
     return f"{data_hash}_{window_sec}_{step_sec}_{min_samples_hrv}_{alpha1_clip_range}"
 
-def calculate_dynamic_dfa_v2(
+def calculate_dynamic_dfa_v2(  # noqa: C901
     df_pl,
     window_sec: int = 300,
     step_sec: int = 30,
@@ -278,7 +278,7 @@ def calculate_dynamic_dfa_v2(
     rr_data = df[["time", rr_col]].dropna()
 
     # Clean HRV data - handle Excel time format (HH:MM:SS) and other invalid formats
-    def clean_rr_value(val):
+    def clean_rr_value(val):  # noqa: C901
         """Convert various RR formats to milliseconds."""
         if pd.isna(val):
             return np.nan

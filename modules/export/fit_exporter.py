@@ -169,7 +169,7 @@ class FitExporter:
         )
         self._write_data(MSG_FILE_ID, data)
     
-    def _write_records(self, df: pd.DataFrame, start_time: datetime):
+    def _write_records(self, df: pd.DataFrame, start_time: datetime):  # noqa: C901
         """Write record messages for each data point."""
         # Determine available fields
         has_power = 'watts' in df.columns

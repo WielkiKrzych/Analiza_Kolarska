@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
 
-def render_limiters_tab(df_plot, cp_input, vt2_vent):
+def render_limiters_tab(df_plot, cp_input, vt2_vent):  # noqa: C901
     st.header("Analiza Limiterów Fizjologicznych (INSCYD-style)")
     st.markdown("Identyfikujemy Twoje ograniczenia metaboliczne i typ zawodniczy na podstawie danych treningowych.")
 

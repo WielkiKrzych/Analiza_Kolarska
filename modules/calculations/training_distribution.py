@@ -198,7 +198,7 @@ def calculate_smo2_zones_time(
     return results
 
 
-def calculate_training_summary(training_data: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_training_summary(training_data: Dict[str, Any]) -> Dict[str, Any]:  # noqa: C901
     """
     Calculate summary statistics from training distribution data.
     
@@ -289,7 +289,7 @@ def calculate_training_summary(training_data: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def generate_training_recommendations(summary: Dict[str, Any]) -> List[str]:
+def generate_training_recommendations(summary: Dict[str, Any]) -> List[str]:  # noqa: C901
     """
     Generate training recommendations based on training distribution analysis.
     

@@ -166,7 +166,7 @@ def render_sidebar(settings_manager: SettingsManager) -> Tuple[RiderSettings, Op
     return settings, uploaded_file
 
 
-def render_export_section(
+def render_export_section(  # noqa: C901
     data_loaded: bool,
     uploaded_file: Optional[object],
     generate_docx_fn,

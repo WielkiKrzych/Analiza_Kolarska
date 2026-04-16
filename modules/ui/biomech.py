@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-def render_biomech_tab(df_plot, df_plot_resampled):
+def render_biomech_tab(df_plot, df_plot_resampled):  # noqa: C901
     st.header("Biomechaniczny Stres")
     
     if 'torque_smooth' in df_plot_resampled.columns:

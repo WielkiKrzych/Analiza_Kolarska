@@ -122,7 +122,7 @@ class NumpyEncoder(json.JSONEncoder):
         return super(NumpyEncoder, self).default(obj)
 
 
-def save_ramp_test_report(
+def save_ramp_test_report(  # noqa: C901
     result: RampTestResult,
     output_base_dir: str = "reports/ramp_tests",
     athlete_id: Optional[str] = None,

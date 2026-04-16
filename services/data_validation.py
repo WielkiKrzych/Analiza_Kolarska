@@ -9,7 +9,7 @@ from typing import Tuple
 from modules.config import Config
 
 
-def validate_dataframe(df: pd.DataFrame) -> Tuple[bool, str]:
+def validate_dataframe(df: pd.DataFrame) -> Tuple[bool, str]:  # noqa: C901
     """Validate that DataFrame has minimum required structure and valid data.
 
     Checks for:

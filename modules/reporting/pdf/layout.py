@@ -764,7 +764,7 @@ def build_page_executive_summary(
 # PAGE 2: EXECUTIVE VERDICT (1-PAGE DECISION SUMMARY)
 # ============================================================================
 
-def build_page_executive_verdict(
+def build_page_executive_verdict(  # noqa: C901
     canonical_physio: Dict[str, Any],
     smo2_advanced: Dict[str, Any],
     biomech_occlusion: Dict[str, Any],
@@ -1537,7 +1537,7 @@ def build_page_thresholds(
     return elements
 
 
-def build_page_smo2(smo2_data, smo2_manual, figure_paths, styles):
+def build_page_smo2(smo2_data, smo2_manual, figure_paths, styles):  # noqa: C901
     """Build SmO2 analysis page - PREMIUM MUSCLE OXYGENATION DIAGNOSTIC."""
     from reportlab.lib.colors import HexColor
     
@@ -2422,7 +2422,7 @@ def build_page_ventilation(vent_data: Dict[str, Any], styles: Dict) -> List:
 # PAGE: METABOLIC ENGINE & TRAINING STRATEGY (PREMIUM)
 # ============================================================================
 
-def build_page_metabolic_engine(metabolic_data: Dict[str, Any], styles: Dict) -> List:
+def build_page_metabolic_engine(metabolic_data: Dict[str, Any], styles: Dict) -> List:  # noqa: C901
     """Build Metabolic Engine & Training Strategy page - PREMIUM."""
     from reportlab.lib.colors import HexColor
     
@@ -3167,7 +3167,7 @@ def build_page_protocol(
 # PAGE 6: TERMOREGULACJA
 # ============================================================================
 
-def build_page_thermal(
+def build_page_thermal(  # noqa: C901
     thermo_data: Dict[str, Any],
     figure_paths: Dict[str, str],
     styles: Dict
@@ -3915,7 +3915,7 @@ def build_page_drift(
 # NEW PAGE: KLUCZOWE WSKAŹNIKI WYDAJNOŚCI (KPI) - PREMIUM DASHBOARD
 # ============================================================================
 
-def build_page_kpi_dashboard(
+def build_page_kpi_dashboard(  # noqa: C901
     kpi: Dict[str, Any],
     styles: Dict
 ) -> List:

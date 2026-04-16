@@ -66,7 +66,7 @@ def _calculate_zone_distribution(watts: pd.Series, cp: float) -> pd.Series:
     return pcts.round(1)
 
 
-def render_report_tab(
+def render_report_tab(  # noqa: C901
     df_plot: pd.DataFrame,
     df_plot_resampled: pd.DataFrame,
     metrics: dict,

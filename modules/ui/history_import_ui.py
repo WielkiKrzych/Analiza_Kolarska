@@ -14,7 +14,7 @@ from modules.history_import import (
 from modules.db import SessionStore
 
 
-def render_history_import_tab(cp: float = 280):
+def render_history_import_tab(cp: float = 280):  # noqa: C901
     """Render the history import UI tab.
     
     Args:

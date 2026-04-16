@@ -38,7 +38,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 
-def generate_summary_pdf(
+def generate_summary_pdf(  # noqa: C901
     df_plot: pd.DataFrame,
     metrics: Dict[str, Any],
     cp_input: int,

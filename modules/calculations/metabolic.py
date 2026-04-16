@@ -15,7 +15,7 @@ from .threshold_types import StepSmO2Result, StepTestRange, TransitionZone
 from .ventilatory import calculate_slope
 
 
-def detect_smo2_from_steps(
+def detect_smo2_from_steps(  # noqa: C901
     df: pd.DataFrame,
     step_range: StepTestRange,
     smo2_column: str = "smo2",

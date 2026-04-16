@@ -569,7 +569,7 @@ class SmO2ThresholdResult:
     step_data: List[Dict] = field(default_factory=list)
 
 
-def detect_smo2_thresholds_moxy(
+def detect_smo2_thresholds_moxy(  # noqa: C901
     df: pd.DataFrame,
     step_duration_sec: int = 180,
     smo2_col: str = "smo2",

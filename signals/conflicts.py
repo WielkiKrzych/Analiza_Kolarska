@@ -330,7 +330,7 @@ def detect_decoupling(
 # Main Conflict Detection Function
 # ============================================================
 
-def detect_signal_conflicts(
+def detect_signal_conflicts(  # noqa: C901
     df: pd.DataFrame,
     hr_column: str = 'heartrate',
     power_column: str = 'watts',

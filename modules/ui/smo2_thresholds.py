@@ -8,7 +8,7 @@ import pandas as pd
 from modules.calculations.smo2_advanced import detect_smo2_thresholds_moxy
 
 
-def render_smo2_thresholds_tab(target_df, training_notes, uploaded_file_name, cp_input):
+def render_smo2_thresholds_tab(target_df, training_notes, uploaded_file_name, cp_input):  # noqa: C901
     """Ramp Test SmO₂ threshold detection (T1 + T2_onset only)."""
     st.header("🎯 SmO₂ Ramp Test Thresholds")
     st.markdown("""

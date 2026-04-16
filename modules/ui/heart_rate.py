@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 
-def render_hr_tab(df):
+def render_hr_tab(df):  # noqa: C901
     st.markdown("### ❤️ Analiza Tętna")
     
     if df is None or df.empty:

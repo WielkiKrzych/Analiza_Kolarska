@@ -5,7 +5,7 @@ from scipy import stats
 from modules.calculations.quality import check_signal_quality
 
 
-def render_vent_tab(target_df, training_notes, uploaded_file_name):
+def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C901
     """Analiza wentylacji dla dowolnego treningu - struktura jak SmO2."""
     st.header("Analiza Wentylacji (VE & Breathing Rate)")
     st.markdown(

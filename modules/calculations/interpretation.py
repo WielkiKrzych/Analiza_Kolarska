@@ -30,7 +30,7 @@ class InterpretationResult:
         return "✅ Interpretacja wiarygodna"
 
 
-def interpret_results(
+def interpret_results(  # noqa: C901
     thresholds: Optional[Any] = None,  # StepTestResult
     dfa_result: Optional[Any] = None,  # DFAResult
     smo2_result: Optional[Any] = None,  # StepSmO2Result

@@ -43,7 +43,7 @@ from modules.calculations.power import calculate_power_duration_curve
 # ============================================================
 
 
-def validate_test(
+def validate_test(  # noqa: C901
     df: pd.DataFrame,
     power_column: str = "watts",
     hr_column: str = "hr",
@@ -498,7 +498,7 @@ def _find_smo2_drop_power(smo2_result: StepSmO2Result) -> Optional[float]:
 # ============================================================
 
 
-def build_result(
+def build_result(  # noqa: C901
     validity: TestValidity,
     preprocessed: PreprocessedData,
     analysis: IndependentAnalysisResults,
@@ -514,7 +514,7 @@ def build_result(
     max_hr: Optional[float] = None,
     smo2_manual_lt1_hr: Optional[float] = None,
     smo2_manual_lt2_hr: Optional[float] = None,
-) -> RampTestResult:
+) -> RampTestResult:  # noqa: C901
     """
     Step 5: Build final RampTestResult with overall confidence.
 

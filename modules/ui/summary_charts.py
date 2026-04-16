@@ -27,7 +27,7 @@ def _get_smooth(df: pd.DataFrame, col: str) -> Optional[pd.Series]:
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def _build_training_timeline_chart(
+def _build_training_timeline_chart(  # noqa: C901
     df_plot: pd.DataFrame,
     cp_input: int = 0,
     vt1_watts: int = 0,

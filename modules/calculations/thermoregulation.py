@@ -48,7 +48,7 @@ class ThermoProfile:
     confidence: float = 0.0
 
 
-def analyze_thermoregulation(
+def analyze_thermoregulation(  # noqa: C901
     core_temp: np.ndarray,
     time_seconds: np.ndarray,
     hr: Optional[np.ndarray] = None,

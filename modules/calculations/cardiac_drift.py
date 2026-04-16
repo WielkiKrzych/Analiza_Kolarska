@@ -65,7 +65,7 @@ def calculate_efficiency_factor(power: np.ndarray, hr: np.ndarray) -> np.ndarray
     return ef
 
 
-def analyze_cardiac_drift(
+def analyze_cardiac_drift(  # noqa: C901
     power: np.ndarray,
     hr: np.ndarray,
     time_seconds: np.ndarray,

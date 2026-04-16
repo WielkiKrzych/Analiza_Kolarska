@@ -22,7 +22,7 @@ from .common import (
 )
 
 
-def generate_ramp_profile_chart(
+def generate_ramp_profile_chart(  # noqa: C901
     report_data: Dict[str, Any],
     config: Optional[Any] = None,
     output_path: Optional[str] = None,

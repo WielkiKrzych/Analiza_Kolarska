@@ -10,7 +10,7 @@ from .common import ensure_pandas
 from .thermal import calculate_heat_strain_index as calculate_psi
 
 
-def calculate_heat_strain_index_enhanced(
+def calculate_heat_strain_index_enhanced(  # noqa: C901
     df_pl: Union[pd.DataFrame, Any],
     resting_hr: float = 0.0,
     hr_max: float = 0.0,
@@ -228,7 +228,7 @@ def calculate_heat_strain_summary(df: pd.DataFrame) -> dict:
     return summary
 
 
-def generate_heat_strain_recommendations(summary: dict) -> list:
+def generate_heat_strain_recommendations(summary: dict) -> list:  # noqa: C901
     """
     Generate heat strain mitigation recommendations.
     

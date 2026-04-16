@@ -21,7 +21,7 @@ from .common import (
     get_color
 )
 
-def generate_ve_profile_chart(
+def generate_ve_profile_chart(  # noqa: C901
     report_data: Dict[str, Any],
     config: Optional[Any] = None,
     output_path: Optional[str] = None,

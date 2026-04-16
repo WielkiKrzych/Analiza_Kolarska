@@ -520,7 +520,7 @@ def _point_to_line_distance(
 # =============================================================================
 
 
-def detect_smo2_breakpoints_segmented(
+def detect_smo2_breakpoints_segmented(  # noqa: C901
     df: pd.DataFrame,
     smo2_col: str = "smo2",
     power_col: str = "watts",
@@ -721,7 +721,7 @@ def _predict_piecewise_3segment(
     return y_pred
 
 
-def _two_phase_breakpoint_search(
+def _two_phase_breakpoint_search(  # noqa: C901
     x: np.ndarray,
     y: np.ndarray,
     bp1_range: Tuple[float, float],

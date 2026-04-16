@@ -290,6 +290,62 @@ def _compute_single_session_tte(
         return None
 
 
+def _submit_tte_tasks(
+    executor: ProcessPoolExecutor,
+    sessions: list,
+    file_cache: dict,
+    target_pcts: List[float],
+    ftp: float,
+    tol_pct: float,
+    progress_callback: Optional[Callable[[int, int, str], None]],
+    total: int,
+) -> Tuple[dict, int]:
+    futures: dict = {}
+    fail_count = 0
+    for i, row in enumerate(sessions):
+        filename = row["filename"]
+        csv_path = file_cache.get(Path(filename).stem)
+        if not csv_path or not csv_path.exists():
+            fail_count += 1
+            if progress_callback:
+                progress_callback(i + 1, total, f"❌ {filename}: Not found")
+            continue
+        future = executor.submit(_compute_single_session_tte, csv_path, target_pcts, ftp, tol_pct)
+        futures[future] = (row["id"], filename, row["extra_metrics"])
+    return futures, fail_count
+
+
+def _collect_tte_results(
+    futures: dict,
+    progress_callback: Optional[Callable[[int, int, str], None]],
+    total: int,
+) -> Tuple[list, int, int]:
+    updates: list = []
+    success_count = 0
+    fail_count = 0
+    for j, future in enumerate(as_completed(futures)):
+        row_id, fname, old_extra_json = futures[future]
+        try:
+            new_tte = future.result()
+            if new_tte:
+                extra = json.loads(old_extra_json or "{}")
+                if "tte" not in extra:
+                    extra["tte"] = {}
+                extra["tte"].update(new_tte)
+                updates.append((json.dumps(extra), row_id))
+                success_count += 1
+                msg = f"✅ {fname}: OK"
+            else:
+                fail_count += 1
+                msg = f"❌ {fname}: Data error"
+        except Exception as e:
+            fail_count += 1
+            msg = f"⚠️ {fname}: {str(e)}"
+        if progress_callback:
+            progress_callback(j + 1, total, msg)
+    return updates, success_count, fail_count
+
+
 def batch_compute_tte_for_all_sessions(
     ftp: float,
     target_pcts: List[float] = [100.0],
@@ -307,78 +363,39 @@ def batch_compute_tte_for_all_sessions(
     db_path = Config.DB_PATH
     training_folder = Path(Config.BASE_DIR) / "treningi_csv"
 
-    success_count = 0
-    fail_count = 0
-
-    # 1. Directory Caching: Scan folder once O(N_files)
-    # Mapping of stem -> Full Path for O(1) matching
     file_cache = {p.stem: p for p in training_folder.glob("*.csv")}
 
     try:
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
-            cursor = conn.execute("SELECT id, filename, extra_metrics FROM sessions")
-            sessions = cursor.fetchall()
+            sessions = conn.execute("SELECT id, filename, extra_metrics FROM sessions").fetchall()
             total = len(sessions)
 
-            # 2. Parallel Processing Setup
-            # Using ProcessPoolExecutor for CPU-bound load_data and compute_tte
             with ProcessPoolExecutor() as executor:
-                futures = {}
-                row_map = {}  # future -> row_id
+                futures, submit_fails = _submit_tte_tasks(
+                    executor,
+                    sessions,
+                    file_cache,
+                    target_pcts,
+                    ftp,
+                    tol_pct,
+                    progress_callback,
+                    total,
+                )
+                updates, success_count, collect_fails = _collect_tte_results(
+                    futures,
+                    progress_callback,
+                    total,
+                )
 
-                for i, row in enumerate(sessions):
-                    filename = row["filename"]
-                    row_id = row["id"]
-
-                    # O(1) Lookup
-                    csv_path = file_cache.get(Path(filename).stem)
-
-                    if not csv_path or not csv_path.exists():
-                        fail_count += 1
-                        if progress_callback:
-                            progress_callback(i + 1, total, f"❌ {filename}: Not found")
-                        continue
-
-                    future = executor.submit(
-                        _compute_single_session_tte, csv_path, target_pcts, ftp, tol_pct
-                    )
-                    futures[future] = (row_id, filename, row["extra_metrics"])
-
-                # 3. Collect Results as they complete
-                updates = []
-                for j, future in enumerate(as_completed(futures)):
-                    row_id, fname, old_extra_json = futures[future]
-                    try:
-                        new_tte = future.result()
-                        if new_tte:
-                            extra = json.loads(old_extra_json or "{}")
-                            if "tte" not in extra:
-                                extra["tte"] = {}
-                            extra["tte"].update(new_tte)
-
-                            updates.append((json.dumps(extra), row_id))
-                            success_count += 1
-                            msg = f"✅ {fname}: OK"
-                        else:
-                            fail_count += 1
-                            msg = f"❌ {fname}: Data error"
-                    except Exception as e:
-                        fail_count += 1
-                        msg = f"⚠️ {fname}: {str(e)}"
-
-                    if progress_callback:
-                        progress_callback(j + 1, total, msg)
-
-                # 4. Batch DB Update (N+1 Solution)
                 if updates:
                     conn.executemany("UPDATE sessions SET extra_metrics = ? WHERE id = ?", updates)
                     conn.commit()
 
+            return success_count, submit_fails + collect_fails
     except Exception as e:
         logger.warning(f"Parallel TTE error: {e}")
-
-    return success_count, fail_count
+        return 0, 0
 
 
 def export_tte_json(result: TTEResult) -> str:

@@ -52,7 +52,7 @@ VALIDATION_CRITERIA = {
 }
 
 
-def validate_ramp_test(
+def validate_ramp_test(  # noqa: C901
     df: pd.DataFrame,
     power_column: str = "watts",
     time_column: str = "time",

@@ -581,7 +581,7 @@ def format_smo2_metrics_for_report(metrics: SmO2AdvancedMetrics) -> Dict[str, An
     }
 
 
-def interpret_smo2_in_context(
+def interpret_smo2_in_context(  # noqa: C901
     avg_smo2: float,
     interval_type: str,
     duration_sec: float = 0,

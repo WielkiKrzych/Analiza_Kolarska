@@ -6,7 +6,7 @@ from modules.calculations.kinetics import generate_state_timeline
 from modules.calculations.quality import check_signal_quality
 
 
-def render_smo2_tab(target_df, training_notes, uploaded_file_name):
+def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C901
     st.header("Analiza SmO2 (Oksygenacja Mięśniowa)")
     st.markdown("Analiza surowych danych SmO2, trendów i kontekstu obciążenia.")
 

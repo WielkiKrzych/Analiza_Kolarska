@@ -87,7 +87,7 @@ def detect_smo2_trend(time_series: pd.Series, smo2_series: pd.Series) -> Dict[st
     return {"slope": slope, "std_err": std_err, "category": category, "description": description}
 
 
-def classify_smo2_context(
+def classify_smo2_context(  # noqa: C901
     df_window: pd.DataFrame, smo2_trend_result: Dict[str, any]
 ) -> Dict[str, str]:
     """

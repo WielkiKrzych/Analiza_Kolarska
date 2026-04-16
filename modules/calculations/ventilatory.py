@@ -74,7 +74,7 @@ def detect_vt1_peaks_heuristic(
         return None, [f"Peak-to-Peak: Slope {slope:.4f} too low (<= 0.05) between peaks"]
 
 
-def detect_vt_from_steps(
+def detect_vt_from_steps(  # noqa: C901
     df: pd.DataFrame,
     step_range: StepTestRange,
     ve_column: str = "tymeventilation",
@@ -433,7 +433,7 @@ def detect_vt_vslope_savgol(
 # =============================================================================
 
 
-def detect_vt_cpet(
+def detect_vt_cpet(  # noqa: C901
     df: pd.DataFrame,
     step_range: Optional[Any] = None,
     power_column: str = "watts",

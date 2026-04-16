@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 from .threshold_types import DetectedStep, StepTestRange
 
 
-def detect_step_test_range(
+def detect_step_test_range(  # noqa: C901
     df: pd.DataFrame,
     power_column: str = "watts",
     time_column: str = "time",

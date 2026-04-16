@@ -29,6 +29,15 @@ def _hash_dataframe(df: pd.DataFrame) -> str:
 @st.cache_data(ttl=3600, show_spinner=False)
 def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]:
     """Build training timeline chart with power, HR, SmO2, VE (cached)."""
+    _UNIFIED_HOVER = (
+        "<b>Czas: %{x:.1f} min</b><br>"
+        "━━━━━━━━━━━━━━━━<br>"
+        "⚡ Moc: %{customdata[0]:.0f} W<br>"
+        "❤️ HR: %{customdata[1]:.0f} bpm<br>"
+        "🩸 SmO₂: %{customdata[2]:.1f}%<br>"
+        "🫁 VE: %{customdata[3]:.1f} L/min"
+        "<extra></extra>"
+    )
     fig = go.Figure()
     time_x = (
         df_plot["time_min"]
@@ -41,6 +50,33 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
     if time_x is None:
         return None
 
+    n = len(df_plot)
+    nan_series = pd.Series(np.nan, index=df_plot.index, dtype=float)
+
+    # Build metric value arrays for unified tooltip — always length n
+    watts_s = df_plot.get("watts_smooth", df_plot.get("watts", nan_series))
+    hr_s = df_plot.get("heartrate_smooth", df_plot.get("heartrate", nan_series))
+    smo2_s = df_plot.get("smo2_smooth", df_plot.get("smo2", nan_series))
+    ve_s = df_plot.get("tymeventilation_smooth", df_plot.get("tymeventilation", nan_series))
+
+    # Apply rolling smoothing for raw columns
+    if "watts_smooth" not in df_plot.columns and "watts" in df_plot.columns:
+        watts_s = df_plot["watts"].rolling(5, center=True).mean()
+    if "smo2_smooth" not in df_plot.columns and "smo2" in df_plot.columns:
+        smo2_s = df_plot["smo2"].rolling(5, center=True).mean()
+    if "tymeventilation_smooth" not in df_plot.columns and "tymeventilation" in df_plot.columns:
+        ve_s = df_plot["tymeventilation"].rolling(10, center=True).mean()
+
+    # Stack into customdata (N x 4)
+    customdata = np.column_stack(
+        [
+            np.asarray(watts_s, dtype=float),
+            np.asarray(hr_s, dtype=float),
+            np.asarray(smo2_s, dtype=float),
+            np.asarray(ve_s, dtype=float),
+        ]
+    )
+
     if "watts_smooth" in df_plot.columns:
         fig.add_trace(
             go.Scatter(
@@ -49,7 +85,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="Moc",
                 fill="tozeroy",
                 line=dict(color=Config.COLOR_POWER, width=1),
-                hovertemplate="Moc: %{y:.0f} W<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
     elif "watts" in df_plot.columns:
@@ -60,7 +97,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="Moc",
                 fill="tozeroy",
                 line=dict(color=Config.COLOR_POWER, width=1),
-                hovertemplate="Moc: %{y:.0f} W<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
 
@@ -72,7 +110,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="HR",
                 line=dict(color=Config.COLOR_HR, width=2),
                 yaxis="y2",
-                hovertemplate="HR: %{y:.0f} bpm<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
     elif "heartrate" in df_plot.columns:
@@ -83,7 +122,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="HR",
                 line=dict(color=Config.COLOR_HR, width=2),
                 yaxis="y2",
-                hovertemplate="HR: %{y:.0f} bpm<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
 
@@ -95,7 +135,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="SmO2",
                 line=dict(color=Config.COLOR_SMO2, width=2, dash="dot"),
                 yaxis="y3",
-                hovertemplate="SmO2: %{y:.1f}%<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
     elif "smo2" in df_plot.columns:
@@ -106,7 +147,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="SmO2",
                 line=dict(color=Config.COLOR_SMO2, width=2, dash="dot"),
                 yaxis="y3",
-                hovertemplate="SmO2: %{y:.1f}%<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
 
@@ -118,7 +160,8 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="VE",
                 line=dict(color=Config.COLOR_VE, width=2, dash="dash"),
                 yaxis="y4",
-                hovertemplate="VE: %{y:.1f} L/min<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
     elif "tymeventilation" in df_plot.columns:
@@ -129,26 +172,29 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
                 name="VE",
                 line=dict(color=Config.COLOR_VE, width=2, dash="dash"),
                 yaxis="y4",
-                hovertemplate="VE: %{y:.1f} L/min<extra></extra>",
+                customdata=customdata,
+                hovertemplate=_UNIFIED_HOVER,
             )
         )
 
     fig.update_layout(
         template="plotly_dark",
         title="Przebieg Treningu (Moc, HR, SmO2, VE)",
-        hovermode="x unified",
+        hovermode="x",
         xaxis=dict(title="Czas [min]"),
         yaxis=dict(title="Moc [W]", side="left"),
         yaxis2=dict(title="HR [bpm]", overlaying="y", side="right", showgrid=False),
         yaxis3=dict(title="SmO2 [%]", overlaying="y", side="right", position=0.95, showgrid=False),
-        yaxis4=dict(title="VE [L/min]", overlaying="y", side="right", position=0.98, showgrid=False),
+        yaxis4=dict(
+            title="VE [L/min]", overlaying="y", side="right", position=0.98, showgrid=False
+        ),
         height=500,
         legend=dict(orientation="h", y=-0.2),
     )
     return fig
 
 
-def render_summary_tab(
+def render_summary_tab(  # noqa: C901
     df_plot: pd.DataFrame,
     df_plot_resampled: pd.DataFrame,
     metrics: dict,
@@ -368,10 +414,10 @@ def render_summary_tab(
     # =========================================================================
     if threshold_result.validation_report or threshold_result.vt1_zone or threshold_result.vt2_zone:
         st.subheader("6️⃣ Walidacja Danych i Pewność Progów")
-        
+
         if threshold_result.validation_report:
             _render_validation_report(threshold_result.validation_report)
-        
+
         if threshold_result.vt1_zone or threshold_result.vt2_zone:
             _render_confidence_meters(threshold_result)
 
@@ -503,7 +549,6 @@ def _estimate_cp_wprime(df_plot):
         return 0, 0
 
 
-
 def _render_smo2_thb_chart(df_plot):
     """Renderowanie wykresu SmO2 vs THb w czasie."""
     if "smo2" not in df_plot.columns:
@@ -596,8 +641,6 @@ def _render_smo2_thb_chart(df_plot):
                 """,
                     unsafe_allow_html=True,
                 )
-
-
 
 
 def _render_tdi_analysis(vt1_watts: int, lt1_watts: int):
@@ -719,7 +762,7 @@ def _render_tdi_analysis(vt1_watts: int, lt1_watts: int):
         """)
 
 
-def _render_vo2max_uncertainty(df_plot: pd.DataFrame, rider_weight: float):
+def _render_vo2max_uncertainty(df_plot: pd.DataFrame, rider_weight: float):  # noqa: C901
     """
     Estymacja VO2max z przedziałem ufności 95% (CI95%).
 
@@ -908,10 +951,10 @@ def _render_validation_report(validation_report):
     """Render validation report section."""
     if not validation_report:
         return
-    
+
     quality_score = validation_report.quality_score
     status = validation_report.status
-    
+
     if status == "valid":
         color = "#00cc96"
         icon = "✅"
@@ -924,26 +967,34 @@ def _render_validation_report(validation_report):
         color = "#ef553b"
         icon = "❌"
         label = "NISKA"
-    
-    st.markdown(f"""
+
+    st.markdown(
+        f"""
     <div style="padding:15px; border-radius:8px; border:2px solid {color}; background-color: #1a1a1a; margin-bottom:15px;">
         <h4 style="margin:0; color: {color};">{icon} Jakość Danych: {label} ({quality_score:.0f}%)</h4>
     </div>
-    """, unsafe_allow_html=True)
-    
+    """,
+        unsafe_allow_html=True,
+    )
+
     if validation_report.criteria_details:
         with st.expander("📋 Szczegóły walidacji", expanded=False):
             for criterion, details in validation_report.criteria_details.items():
                 passed = validation_report.criteria.get(criterion, False)
                 icon_c = "✅" if passed else "❌"
-                
+
                 if "value_display" in details:
-                    st.write(f"{icon_c} **{criterion}**: {details['value_display']} (oczekiwano: {details.get('expected', 'N/A')})")
+                    st.write(
+                        f"{icon_c} **{criterion}**: {details['value_display']} (oczekiwano: {details.get('expected', 'N/A')})"
+                    )
                 elif "error" in details:
                     st.write(f"❌ **{criterion}**: {details['error']}")
-    
+
     if validation_report.recommendations:
-        st.warning("💡 **Rekomendacje:**\n" + "\n".join(f"- {r}" for r in validation_report.recommendations))
+        st.warning(
+            "💡 **Rekomendacje:**\n"
+            + "\n".join(f"- {r}" for r in validation_report.recommendations)
+        )
 
 
 def _render_confidence_meters(threshold_result):
@@ -951,18 +1002,18 @@ def _render_confidence_meters(threshold_result):
     if not threshold_result:
         st.info("Brak wykrytych progów do wyświetlenia confidence.")
         return
-    
+
     st.markdown("### 🎯 Pewność Detekcji Progów")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         if threshold_result.vt1_zone:
             _render_single_confidence_meter("VT1 (Wentylacyjny)", threshold_result.vt1_zone)
         elif threshold_result.vt1_watts:
             st.metric("VT1 (Wentylacyjny)", f"{threshold_result.vt1_watts:.0f} W")
             st.caption("⚠️ Brak danych confidence")
-    
+
     with col2:
         if threshold_result.vt2_zone:
             _render_single_confidence_meter("VT2 (Próg Beztlenowy)", threshold_result.vt2_zone)
@@ -974,7 +1025,7 @@ def _render_confidence_meters(threshold_result):
 def _render_single_confidence_meter(label: str, zone):
     """Render a single confidence meter for a threshold zone."""
     confidence_pct = zone.confidence * 100
-    
+
     if zone.confidence >= 0.8:
         color = "#00cc96"
         icon = "✅"
@@ -987,11 +1038,12 @@ def _render_single_confidence_meter(label: str, zone):
         color = "#ef553b"
         icon = "❌"
         level = "Niska"
-    
+
     range_str = f"{zone.range_watts[0]:.0f}–{zone.range_watts[1]:.0f} W"
     midpoint = zone.midpoint_watts
-    
-    st.markdown(f"""
+
+    st.markdown(
+        f"""
     <div style="padding:12px; border-radius:8px; border:2px solid {color}; background-color: #1a1a1a;">
         <h5 style="margin:0; color: {color};">{icon} {label}</h5>
         <p style="margin:5px 0; color:#aaa;">
@@ -1004,4 +1056,6 @@ def _render_single_confidence_meter(label: str, zone):
         </div>
         <p style="margin:5px 0; font-size:0.75em; color:#666;">Metoda: {zone.method}</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )

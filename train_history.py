@@ -72,7 +72,7 @@ if MLX_AVAILABLE:
 
 # --- FUNKCJE POMOCNICZE ---
 
-def load_data(filepath: Path) -> pd.DataFrame:
+def load_data(filepath: Path) -> pd.DataFrame:  # noqa: C901
     """Smart Loader: Radzi sobie z zagnieżdżonymi JSONami i CSV."""
     file_ext = filepath.suffix.lower()
     filename = filepath.name
@@ -286,7 +286,7 @@ def get_folder_stats():
     return files
 
 
-def train_loop():
+def train_loop():  # noqa: C901
     """Główna pętla treningowa."""
     if not MLX_AVAILABLE:
         print("❌ MLX wymagany do treningu. Przerwano.")

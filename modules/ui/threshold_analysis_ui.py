@@ -18,7 +18,7 @@ from modules.calculations.thresholds import (
 )
 
 
-def render_threshold_analysis_tab(
+def render_threshold_analysis_tab(  # noqa: C901
     target_df, training_notes, uploaded_file_name, cp_input, ftp_input, max_hr_input
 ):
     """Render the threshold analysis and training plan tab."""

@@ -104,7 +104,7 @@ class GeneticAnalyzer:
         'PPARGC1A': 'rs8192678',
     }
     
-    def parse_23andme(self, raw_data: str) -> GeneticProfile:
+    def parse_23andme(self, raw_data: str) -> GeneticProfile:  # noqa: C901
         """Parse 23andMe raw data file.
         
         Args:

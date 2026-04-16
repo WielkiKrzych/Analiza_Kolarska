@@ -52,7 +52,7 @@ from ...calculations.executive_summary import generate_executive_summary
 logger = logging.getLogger("Tri_Dashboard.PDFBuilder")
 
 
-def map_ramp_json_to_pdf_data(report_json: Dict[str, Any], manual_overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def map_ramp_json_to_pdf_data(report_json: Dict[str, Any], manual_overrides: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:  # noqa: C901
     """Map canonical JSON report to internal PDF data structure.
     
     This is the ONLY function that reads the raw JSON structure.
@@ -421,7 +421,7 @@ def map_ramp_json_to_pdf_data(report_json: Dict[str, Any], manual_overrides: Opt
     }
 
 
-def build_ramp_pdf(
+def build_ramp_pdf(  # noqa: C901
     report_data: Dict[str, Any],
     figure_paths: Optional[Dict[str, str]] = None,
     output_path: Optional[str] = None,

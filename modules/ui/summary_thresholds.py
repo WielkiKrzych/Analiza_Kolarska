@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from .summary_calculations import _get_vent_metrics_for_power
 
 
-def _render_vent_thresholds_summary(df_plot, cp_input, vt1_watts, vt2_watts, threshold_result):
+def _render_vent_thresholds_summary(df_plot, cp_input, vt1_watts, vt2_watts, threshold_result):  # noqa: C901
     """Renderowanie wykresu progów wentylacyjnych VT1/VT2."""
     if "tymeventilation" not in df_plot.columns:
         st.info("Brak danych wentylacji do analizy progów VT.")
@@ -131,7 +131,7 @@ def _render_vent_thresholds_summary(df_plot, cp_input, vt1_watts, vt2_watts, thr
             st.info("VT2: Nie wykryto")
 
 
-def _render_smo2_thresholds_summary(df_plot, cp_input, lt1_watts, lt2_watts, smo2_result):
+def _render_smo2_thresholds_summary(df_plot, cp_input, lt1_watts, lt2_watts, smo2_result):  # noqa: C901
     """Renderowanie wykresu progów SmO2 LT1/LT2."""
     if "smo2" not in df_plot.columns:
         st.info("Brak danych SmO2 do analizy progów LT.")

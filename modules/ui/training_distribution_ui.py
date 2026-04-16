@@ -18,7 +18,7 @@ from modules.calculations import (
 )
 
 
-def render_training_distribution_tab(
+def render_training_distribution_tab(  # noqa: C901
     df: Optional[pd.DataFrame] = None,
     df_resampled: Optional[pd.DataFrame] = None,
     metrics: Optional[Dict[str, Any]] = None,

@@ -88,7 +88,7 @@ class AlertReport:
 # ============================================================
 
 
-def detect_cardiac_drift(df: pd.DataFrame, metrics: dict[str, Any]) -> Optional[Alert]:
+def detect_cardiac_drift(df: pd.DataFrame, metrics: dict[str, Any]) -> Optional[Alert]:  # noqa: C901
     """Detect cardiac drift during constant-power segments.
 
     Uses ``detect_constant_power_segments`` from ``physio_maps`` to find
@@ -189,7 +189,7 @@ def detect_cardiac_drift(df: pd.DataFrame, metrics: dict[str, Any]) -> Optional[
 # ============================================================
 
 
-def detect_smo2_crash(df: pd.DataFrame) -> Optional[Alert]:
+def detect_smo2_crash(df: pd.DataFrame) -> Optional[Alert]:  # noqa: C901
     """Detect significant SmO2 desaturation during session.
 
     Baseline = mean SmO2 of first 2 minutes where watts > 50 W.
@@ -520,7 +520,7 @@ _OT_COMPONENT_WEIGHTS: dict[str, float] = {
 }
 
 
-def calculate_overtraining_risk(
+def calculate_overtraining_risk(  # noqa: C901
     session_history: list[dict[str, Any]],
     df: pd.DataFrame,
     metrics: dict[str, Any],
@@ -717,7 +717,7 @@ def calculate_overtraining_risk(
 # ============================================================
 
 
-def analyze_session_alerts(
+def analyze_session_alerts(  # noqa: C901
     df: pd.DataFrame,
     metrics: dict[str, Any],
     session_history: Optional[list[dict[str, Any]]] = None,

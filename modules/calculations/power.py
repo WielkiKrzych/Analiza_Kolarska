@@ -434,7 +434,7 @@ def estimate_tte_range(pdc: dict, cp: float, w_prime: float) -> dict:
 # ============================================================
 
 
-def classify_phenotype(pdc: dict, weight: float) -> str:
+def classify_phenotype(pdc: dict, weight: float) -> str:  # noqa: C901
     """Classify rider phenotype based on Power Duration Curve.
 
     Uses WKO5-style power profile analysis to determine
