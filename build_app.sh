@@ -13,7 +13,16 @@ set -euo pipefail
 
 APP_NAME="Analiza Kolarska"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$HOME/Applications/$APP_NAME.app"
+# Build into /Applications so it shows in the standard Applications folder.
+# Fall back to ~/Applications only if /Applications is not writable.
+if touch "/Applications/.ak_write_test" 2>/dev/null; then
+  rm -f "/Applications/.ak_write_test"
+  APP_DIR="/Applications/$APP_NAME.app"
+else
+  mkdir -p "$HOME/Applications"
+  APP_DIR="$HOME/Applications/$APP_NAME.app"
+fi
+echo "Target: $APP_DIR"
 MACOS_DIR="$APP_DIR/Contents/MacOS"
 RES_DIR="$APP_DIR/Contents/Resources"
 PLIST="$APP_DIR/Contents/Info.plist"
