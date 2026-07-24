@@ -43,11 +43,13 @@ if [ -z "$STREAMLIT_BIN" ]; then
 fi
 echo "[launcher] Using streamlit: $STREAMLIT_BIN"
 
-# ---- Already running? just open the browser ----
+# ---- If a server is already on the port, stop it so we relaunch with the
+#      latest code. Otherwise the Dock app would keep serving a stale server
+#      and edits/pulls (e.g. sidebar defaults) would never take effect. ----
 if lsof -ti :"$PORT" >/dev/null 2>&1; then
-  echo "[launcher] Port $PORT already in use — opening browser"
-  open "$URL"
-  exit 0
+  echo "[launcher] Port $PORT busy — stopping old server for a fresh start"
+  lsof -ti :"$PORT" | xargs kill -9 2>/dev/null || true
+  sleep 1
 fi
 
 # ---- Launch Streamlit ----

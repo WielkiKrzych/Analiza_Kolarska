@@ -26,13 +26,18 @@ class StateManager:
         }
 
     def init_session_state(self) -> None:
-        """Initialize session state from saved settings if needed."""
+        """Initialize session state, overlaying saved settings every run.
+
+        The overlay is UNCONDITIONAL (like Tri_Dashboard): rider params always
+        reflect the settings defaults, so stale session values from an earlier
+        server run cannot mask them.
+        """
         saved_settings = self.settings_manager.load_settings()
-        
+
         for ui_key, json_key in self._keys_map.items():
-            if ui_key not in st.session_state:
-                st.session_state[ui_key] = saved_settings.get(json_key)
-        
+            if json_key in saved_settings:
+                st.session_state[ui_key] = saved_settings[json_key]
+
         if 'report_generation_requested' not in st.session_state:
             st.session_state['report_generation_requested'] = False
 
