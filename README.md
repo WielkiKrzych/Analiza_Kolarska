@@ -1,417 +1,283 @@
-# 🚴 Analiza Kolarska
+<h1 align="center">🚴‍♂️ Analiza Kolarska</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python">
-  <img src="https://img.shields.io/badge/Streamlit-1.30%2B-red?style=for-the-badge&logo=streamlit" alt="Streamlit">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Tests-157%20passed-brightgreen?style=for-the-badge&logo=pytest" alt="Tests">
+  <em>Profesjonalny dashboard do analizy fizjologii i mocy w kolarstwie —<br/>
+  od surowego pliku treningowego do progów, modeli i rekomendacji.</em>
 </p>
 
-Profesjonalna aplikacja do analizy danych treningowych kolarskich z zaawansowaną wizualizacją i modelowaniem fizjologicznym.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit">
+  <img src="https://img.shields.io/badge/Testy-253%20passed-3FB950?style=for-the-badge&logo=pytest&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/Licencja-MIT-8957E5?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/macOS-Dock%20App-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS app">
+</p>
 
 ---
 
-## ⭐ Kluczowe Funkcje
+## 📑 Spis treści
 
-| Moduł | Funkcje |
-|-------|----------|
-| **📊 Overview** | Raport KPI, Podsumowanie sesji, Krzywa mocy |
-| **⚡ Performance** | Power, Biomech, Model (CP/W'), HR, Hematologia, Drift Maps, **Race Predictor**, **Durability**, **Training Distribution**, **TTE**, **Intervals** |
-| **🧠 Intelligence** | Nutrition, Limiters |
-| **🫀 Physiology** | HRV, SmO2, Ventilation, Thermal, **W' Reconstitution**, **Heat Strain**, **SmO2 Thresholds** |
+- [Czym jest Analiza Kolarska](#-czym-jest-analiza-kolarska)
+- [Mapa zakładek](#-mapa-zakładek)
+- [Szybki start](#-szybki-start)
+- [Aplikacja na Dock (macOS)](#-aplikacja-na-dock-macos)
+- [Architektura](#-architektura)
+- [Struktura projektu](#-struktura-projektu)
+- [Stos technologiczny](#-stos-technologiczny)
+- [Walidacja i jakość danych](#-walidacja-i-jakość-danych)
+- [Testy](#-testy)
+- [Changelog](#-changelog)
+- [Licencja i autor](#-licencja-i-autor)
+
+---
+
+## 🎯 Czym jest Analiza Kolarska
+
+**Analiza Kolarska** to samodzielna, kolarska część ekosystemu *Tri_Dashboard* — skupiona wyłącznie
+na rowerze. Wczytujesz plik z treningu lub testu (CSV / TXT), a aplikacja:
+
+- **rozpoznaje typ sesji** (test rampowy / schodkowy vs trening) i dobiera odpowiednią analizę,
+- **wykrywa progi** wentylacyjne (VT1/VT2) i mięśniowe (SmO2) — jako *zakresy z pewnością detekcji*, nie pojedyncze punkty,
+- **modeluje moc** (CP / W′, krzywa mocy, W′ balance i rekonstytucja),
+- **ocenia fizjologię** (HRV, hemodynamika, wentylacja, obciążenie cieplne),
+- **planuje i prognozuje** (predykcja mocy wyścigowej, periodyzacja, model Banistera, VLaMax),
+- **eksportuje** wyniki (FIT / TCX / CSV) i generuje raporty.
+
+> 💡 Wszystkie wykresy są interaktywne (Plotly) — z zoomem, hover i zaznaczaniem przeciągnięciem (box-select).
+
+---
+
+## 🗺️ Mapa zakładek
+
+Interfejs dzieli się na **pięć grup**:
+
+### 📊 Overview
+| Zakładka | Zawartość |
+|---|---|
+| 📋 Raport z KPI | Kluczowe wskaźniki sesji, dekopling, dryf Z2 |
+| 📊 Podsumowanie | Przegląd metryk, krzywa mocy, VO₂max z CI95%, walidacja danych |
+
+### ⚡ Performance
+| Zakładka | Opis |
+|---|---|
+| 🔋 Power | NP, IF, TSS, MMP, strefy mocy |
+| 🦵 Biomech | Kadencja, balans, moment obrotowy, Gross Efficiency |
+| 📐 Model | Critical Power (CP) i W′ (W Prime) |
+| ❤️ HR | Strefy tętna, decay, dryf w Z2 |
+| 🧬 Hematology | THb, Hct, estymacje hemodynamiczne |
+| 📈 Drift Maps | Mapy dryfu fizjologicznego |
+| ⏱️ TTE | Time To Exhaustion na zadanej intensywności |
+| 🔗 W′bal Recon | Mapa wyczerpania/odnowy W′, cykle regeneracji (Caen 2021) |
+| 🛡️ Durability | Durability Index, analiza sezonowa, rekomendacje |
+
+### 🧠 Intelligence
+| Zakładka | Opis |
+|---|---|
+| 🍎 Nutrition | Estymacja spalania kalorii / węglowodanów |
+| 🚧 Limiters | Identyfikacja ograniczników wydolności |
+| 🏁 Race Predictor | Predykcja mocy na zawody z korektami wiatr / temperatura / trasa |
+| 📊 Training Distribution | Time-in-Zone (power / HR / SmO2), balance score |
+
+### 🫀 Physiology
+| Zakładka | Opis |
+|---|---|
+| 💓 HRV | RMSSD, pNN50, DFA-α1 |
+| 🩸 SmO2 | Saturacja mięśniowa, dekonwolucja, progi |
+| 🫁 Ventilation | VT1, VT2, RER, breathing power |
+| 🌡️ Thermal | Temperatura centralna/peryferyjna |
+| 🔥 Heat Strain | PSI/HSI z korektami środowiskowymi, ocena ryzyka |
+
+### 🚴 Cycling
+| Zakładka | Opis |
+|---|---|
+| 🎯 MPA | Modeled Power Availability (dostępna moc z W′bal) |
+| 🧪 VLaMax | Profil beztlenowy, wkład systemów energetycznych |
+| ♻️ Aerobic Efficiency | Efektywność tlenowa i jej trend w czasie |
+| 📈 Training Impact | Wpływ treningu, klasyfikacja intensywności |
+| 🗓️ Banister | Model fitness–fatigue, prognoza formy, okna szczytu |
+| 📅 Periodization | Bloki treningowe, plan tygodniowy, PMC (CTL/ATL/TSB) |
+
+---
+
+## 🚀 Szybki start
+
+```bash
+# 1. Klonowanie
+git clone https://github.com/WielkiKrzych/Analiza_Kolarska.git
+cd Analiza_Kolarska
+
+# 2. Zależności (zalecane venv)
+pip install -e .
+# opcjonalnie narzędzia deweloperskie i testy:
+pip install -e ".[dev,test]"
+
+# 3. Uruchomienie
+streamlit run app.py
+```
+
+Aplikacja wystartuje na `http://localhost:8501` (lub `8502`, jeśli uruchamiasz ją z aplikacji Dock).
+
+**Wymagania:** Python 3.10+, zależności z `pyproject.toml`.
+
+---
+
+## 🍎 Aplikacja na Dock (macOS)
+
+Jednym poleceniem zbudujesz natywną aplikację `.app` z własną ikoną, która uruchamia dashboard
+kliknięciem z Docka:
+
+```bash
+cd ~/Documents/Analiza_Kolarska && bash build_app.sh
+```
+
+Skrypt tworzy **`Analiza Kolarska.app`** w `/Applications` (lub `~/Applications`, jeśli brak uprawnień):
+
+- ▸ aplet AppleScript uruchamia `launcher.sh` w tle → Streamlit na porcie `8502` → przeglądarka,
+- ▸ własna ikona (`icon.png`) osadzana przez `NSWorkspace` — plik `make_icon.py` generuje grafikę,
+- ▸ automatyczne odświeżenie cache ikon (`lsregister` + `killall Dock`).
+
+Po zbudowaniu przeciągnij aplikację z `/Applications` na Dock. Log startu: `/tmp/analiza_kolarska_launch.log`.
+
+> 🔧 Po każdej przebudowie: jeśli Dock pokazuje pustą ikonę, usuń pozycję z Docka i przeciągnij ją ponownie
+> (przebudowa podmienia bundle, przez co przypięty element „osierocieje").
 
 ---
 
 ## 🏗️ Architektura
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         📱 app.py                                │
-│                    (Streamlit Interface)                          │
-└─────────────────────┬───────────────────────────────────────────┘
-                      │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-   ┌─────────┐   ┌─────────┐   ┌─────────┐
-   │  📊    │   │   ⚡    │   │   🫀    │
-   │Overview│   │Performance│  │Physiology│
-   └─────────┘   └─────────┘   └─────────┘
-        │             │             │
-        └─────────────┴─────────────┘
-                      ▼
-          ┌───────────────────────┐
-          │    🧮 calculations/   │
-          │  (NumPy, SciPy, Numba)│
-          └───────────────────────┘
-                      │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-   ┌─────────┐   ┌─────────┐   ┌─────────┐
-   │   💾    │   │  📈     │   │  📤     │
-   │   db/   │   │ reporting│   │ export/ │
-   │ SQLite  │   │         │   │FIT/TCX  │
-   └─────────┘   └─────────┘   └─────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                          📱  app.py                            │
+│                    Streamlit + TabRegistry                     │
+└───────────────┬──────────────────────────────────────────────┘
+                │
+   ┌────────────┼────────────┬────────────┬────────────┐
+   ▼            ▼            ▼            ▼            ▼
+ 📊 Overview  ⚡ Perf.   🧠 Intel.   🫀 Physio.   🚴 Cycling
+   └────────────┴────────────┴────────────┴────────────┘
+                │
+                ▼
+        🧮  modules/calculations/      ← NumPy · SciPy · Numba
+        (moc, W′, progi, SmO2, HRV, termika, VLaMax, Banister…)
+                │
+   ┌────────────┼────────────┐
+   ▼            ▼            ▼
+ 💾 db/       📈 reporting/   📤 export/
+ SQLite       PDF / figures   FIT · TCX · CSV
 ```
 
 ---
 
-## 🛠️ Technologie
-
-### Core
-- **Python** 3.10+ — Główny język
-- **Streamlit** — Interfejs webowy
-- **Pandas** — Przetwarzanie danych
-- **NumPy** — Obliczenia numeryczne
-
-### Data Processing & ML
-- **SciPy** — Analiza statystyczna
-- **Numba** — JIT compilation
-- **Plotly** — Interaktywne wykresy
-- **NeuroKit2** — Analiza sygnałów biologicznych
-
-### Storage & Tools
-- **SQLite** — Baza danych sesji + profile zawodnika
-- **Pytest** — Testy (157 passed)
-
----
-
-## 🚀 Uruchomienie
-
-```bash
-# Klonowanie repozytorium
-git clone https://github.com/WielkiKrzych/Analiza_Kolarska.git
-cd Analiza_Kolarska
-
-# Instalacja zależności (zalecane użycie venv)
-pip install -e .
-
-# Opcjonalnie: instalacja zależności deweloperskich i testowych
-pip install -e ".[dev,test]"
-
-# Uruchomienie aplikacji
-streamlit run app.py
-```
-
-### Wymagania
-- Python 3.10+
-- SQLite3
-- Wszystkie zależności w `pyproject.toml`
-
----
-
-## 📁 Struktura Projektu
+## 📁 Struktura projektu
 
 ```
 Analiza_Kolarska/
-├── app.py                      🚀 Główna aplikacja Streamlit
-├── pyproject.toml              📦 Konfiguracja projektu
-├── README.md                   📖 Ten plik
+├── app.py                     🚀 Główna aplikacja Streamlit (TabRegistry)
+├── build_app.sh               🍎 Builder aplikacji na Dock (macOS)
+├── launcher.sh                ▶️  Lifecycle Streamlita dla aplikacji .app
+├── make_icon.py / icon.png    🎨 Generator i grafika ikony
+├── pyproject.toml             📦 Konfiguracja i zależności
 │
 ├── modules/
-│   ├── calculations/           🧮 Silnik obliczeniowy
-│   │   ├── power.py            ⚡ Metryki mocy (NP, IF, TSS)
-│   │   ├── w_prime.py          🔋 W' Balance (Skiba + Caen bi-exp)
-│   │   ├── w_prime_reconstitution.py 🔋 Mapa rekonstytucji W'
-│   │   ├── race_predictor.py   🏁 Predykcja mocy wyścigowej
-│   │   ├── training_distribution.py 📊 Time-in-Zone
-│   │   ├── durability.py       🛡️ Durability Index
-│   │   ├── heat_strain.py      🌡️ Heat Strain Index
-│   │   ├── smo2_thresholds.py  🩸 Progi SmO2
-│   │   ├── smo2_analysis.py    🩸 Zaawansowana analiza SmO2
-│   │   ├── smo2/               🩸 Pakiet SmO2 (classifier, calculator)
-│   │   ├── plateau_detector.py  📈 Detekcja плато
-│   │   ├── alert_engine.py     🚨 Silnik alertów fizjologicznych
-│   │   ├── hrv.py              💓 Analiza HRV
-│   │   ├── smo2_advanced.py    🩸 SmO2 + dekonwolucja
-│   │   ├── ventilatory.py      🫁 VT1/VT2 detection
-│   │   ├── thresholds.py       📐 Wykrywanie progów
-│   │   ├── stamina.py          💪 Stamina Score, VLaMax
-│   │   ├── nutrition.py        🍎 Spalanie węglowodanów
-│   │   └── ...
-│   ├── ui/                     🎨 Komponenty interfejsu
-│   │   ├── race_predictor_ui.py    🏁 Zakładka Race Predictor
-│   │   ├── durability_ui.py        🛡️ Zakładka Durability
-│   │   ├── heat_strain_ui.py       🌡️ Zakładka Heat Strain
-│   │   ├── w_prime_reconstitution_ui.py 🔋 Zakładka W' Reconstitution
-│   │   ├── training_distribution_ui.py 📊 Zakładka Training Distribution
-│   │   ├── tte_ui.py               ⏱️ Zakładka TTE
-│   │   ├── intervals_ui.py         🔴 Zakładka Intervals
-│   │   ├── smo2_thresholds.py      🩸 Zakładka SmO2 Thresholds
-│   │   ├── alerts.py               🚨 Zakładka Alerts
-│   │   └── ...
-│   ├── db/                     💾 SQLite stores
-│   │   ├── session_store.py        💾 Sesje treningowe
-│   │   ├── athlete_profiles.py     👤 Profile zawodnika (CP, W', VT)
-│   │   └── base.py                 🔧 Baza abstrakcyjna DB
-│   ├── reporting/              📈 Generowanie raportów
-│   ├── export/                 📤 Eksport danych
-│   │   ├── fit_exporter.py         📤 FIT (Garmin/Strava/TP)
-│   │   ├── tcx_generator.py        📤 TCX
-│   │   ├── zone_exporter.py        📤 Strefy CSV
-│   │   └── workout_exporter.py     📤 TrainingPeaks CSV
-│   └── social/                 🌍 Dane referencyjne
-│       └── reference_data.py       📊 Benchmarki percentylowe
+│   ├── calculations/          🧮 Silnik obliczeniowy
+│   │   ├── power.py · w_prime.py · w_prime_reconstitution.py
+│   │   ├── mpa.py · vlamax_profile.py · aerobic_efficiency.py
+│   │   ├── banister.py · pmc.py · periodization.py · training_impact.py
+│   │   ├── race_predictor.py · training_distribution.py · durability.py
+│   │   ├── thresholds.py · ventilatory.py · smo2/ · heat_strain.py · hrv.py …
+│   ├── ui/                     🎨 Zakładki interfejsu (+ shared.py: chart/metric)
+│   ├── db/                     💾 SQLite: sesje + profile zawodnika
+│   ├── reporting/              📈 Raporty PDF i figury
+│   └── export/                 📤 FIT / TCX / CSV
 │
-├── services/
-│   ├── session_analysis.py     🔄 Analiza sesji
-│   └── session_orchestrator.py 🎭 Koordynacja
-│
-├── models/                    📋 Modele danych
-├── signals/                  🔬 Przetwarzanie sygnałów
-├── tests/                    🧪 Testy (157 passed)
-└── data/                     💾 Baza danych SQLite
+├── services/                  🔄 Orkiestracja analizy sesji
+├── models/ · signals/         📋 Modele danych · przetwarzanie sygnałów
+├── tests/                     🧪 253 testy
+└── data/                      💾 Baza SQLite
 ```
 
 ---
 
-## 📊 Funkcje Szczegółowe
+## 🛠️ Stos technologiczny
 
-### 📊 Overview
-- **📋 Raport z KPI** — Kompleksowy raport z kluczowymi wskaźnikami
-- **📊 Podsumowanie** — Przegląd metryk sesji, krzywa mocy
-
-### ⚡ Performance
-| Funkcja | Opis |
-|---------|------|
-| 🔋 Power | NP, IF, TSS, MMP, strefy mocy |
-| 🦵 Biomech | Kadencja, balans, Torque, Gross Efficiency |
-| 📐 Model | CP (Critical Power), W' (W Prime) |
-| ❤️ HR | Strefy tętna, decay, Z2 drift |
-| 🧬 Hematology | THb, Hct, Fe |
-| 📈 Drift Maps | Mapy dryfu fizjologicznego |
-| 🏁 **Race Predictor** | **Predykcja mocy na zawody (CP/W') z korektami wiatr/temperatura/trasa, pacing** |
-| 🛡️ **Durability** | **Durability Index, sezonowa analiza zmęczenia, rekomendacje treningowe** |
-| 📊 **Training Distribution** | **Time-in-Zone (power/HR/SmO2), balance score, rozkład intensywności** |
-| ⏱️ **TTE** | **Time To Exhaustion — estymacja czasu do wyczerpania na zadanej intensywności** |
-| 🔴 **Intervals** | **Detekcja i klasyfikacja interwałów, Pulse Power, Gross Efficiency** |
-
-### 🧠 Intelligence
-| Funkcja | Opis |
-|---------|------|
-| 🍎 Nutrition | Estymacja spalania kalorii/węglowodanów |
-| 🚧 Limiters | Identyfikacja ograniczników wydolności |
-
-### 🫀 Physiology
-| Funkcja | Opis |
-|---------|------|
-| 💓 HRV | RMSSD, pNN50, DFA-a1 |
-| 🩸 SmO2 | Saturacja mięśniowa, dekonwolucja |
-| 🫁 Ventilation | VT1, VT2, RER, breathing power |
-| 🌡️ Thermal | Temperatura centralna/peryferyjna |
-| 🔋 **W' Reconstitution** | **Mapa wyczerpania/odnowy W', detekcja cykli, tempo regeneracji (Caen 2021)** |
-| 🌡️ **Heat Strain** | **PSI/HSI z korektami środowiskowymi, ocena ryzyka, strategie chłodzenia** |
-| 🩸 **SmO2 Thresholds** | **Detekcja progów SmO2 (LT1/LT2), analiza Feldmann 4-phase, Exp-Dmax** |
+| Warstwa | Technologie |
+|---|---|
+| **Rdzeń** | Python 3.10+ · Streamlit · Pandas · NumPy |
+| **Obliczenia** | SciPy · Numba (JIT) · Polars · NeuroKit2 |
+| **Wizualizacja** | Plotly (interaktywne, box-select) · Matplotlib · Kaleido |
+| **Dane** | SQLite (sesje + profile zawodnika) |
+| **Jakość** | Pytest (253) · Ruff · Black |
 
 ---
 
-## 🔬 Walidacja Danych
+## 🔬 Walidacja i jakość danych
 
-Aplikacja automatycznie waliduje jakość danych:
+Każda analiza rampy/schodków przechodzi automatyczną kontrolę jakości:
 
-- ✅ Minimalny czas trwania testu (5 min)
-- ✅ Minimalna liczba stopni (3+)
-- ✅ Monotoniczność wzrostu mocy
-- ✅ Detekcja przerw w danych
-- ✅ Stabilność kadencji
+- ✅ minimalny czas trwania i liczba stopni,
+- ✅ monotoniczność wzrostu mocy,
+- ✅ detekcja przerw w zapisie i stabilności kadencji.
 
-**Confidence Scores** — Każdy próg zawiera:
-- Pewność detekcji (0-100%)
-- Zakres wartości zamiast punktu
-- Metodę detekcji
-- Wizualny wskaźnik pewności
+**Progi jako zakresy z pewnością** — każdy próg (VT1/VT2, SmO2) zawiera: pewność detekcji (0–100%),
+zakres wartości, użytą metodę i wizualny wskaźnik wiarygodności.
 
 ---
 
 ## 🧪 Testy
 
 ```bash
-# Uruchomienie testów
-python -m pytest tests/ -v
-
-# Wynik
-# ====================== 157 passed, 8 warnings ======================
+python -m pytest tests/ -q
+# ── 253 passed ──
 ```
-
----
-
-## ⚡️ Optymalizacje Wydajnościowe
-
-| Technika | Lokalizacja | Zysk |
-|----------|-------------|------|
-| NumPy vectorization | `biomech.py`, `session_analysis.py` | 10-50x |
-| Numba JIT | `hrv.py`, `w_prime.py` | 5-20x |
-| Polars CSV parsing | `utils.py` | 3-5x vs Pandas |
-| @lru_cache | `stamina.py`, `power.py` | Cache hits |
-| SQLite indexes | `session_store.py` | Query speed |
-| Pre-ekstrakcja arrays | `fit_exporter.py` | 3-5x |
-
----
-
-## 🔒 Bezpieczeństwo i Jakość Kodu (v0.4.0)
-
-### Krytyczne Poprawki Bezpieczeństwa
-- **RCE Elimination** — Usunięto `eval()` z `polars_adapter.py`, zastąpiono typowanym API `filter(col, op, value)`
-- **XSS Protection** — `html.escape()` dla wszystkich user inputs w UI (`components.py`, `app.py`)
-- **Path Traversal Prevention** — Sanitizacja nazw plików w `notes.py` (usuwanie `../`, `/`, `\`)
-- **Input Mutation Prevention** — Kopiowanie DataFrame przed modyfikacją w `pipeline.py`, `utils.py`
-
-### Stabilność Kodu
-- **NameError Fix** — Dodano brakujący `import logging` + `logger` w `data_processing.py`
-- **Dead Code Removal** — Usunięto duplikaty kodu w `ml_logic.py`, `utils.py`, `persistence.py`
-- **Unreachable Code** — Naprawiony nieosiągalny `except` block w `data_processing.py`
-- **Logging** — Zamieniono 40+ wywołań `print()` na `logger.info/warning/error` w modułach raportowania
-- **Error Handling** — Dodano `try/except` w `notes.py` (`load_notes`, `save_notes`)
-- **File Identity** — `hashlib.md5` zamiast `hash()` dla deterministic file hashing w `app.py`
-
-### Dependency Management
-- **Version Constraints** — `mlx>=0.5.0,<1.0.0`, `kaleido>=0.2.1`
-- **Optional Dependencies** — pytest przeniesiony do `[project.optional-dependencies]`
-- **Proper .gitignore** — Wykluczenia dla danych wrażliwych (`*.db`, `*.npz`, `user_settings.json`)
 
 ---
 
 ## 🔧 Changelog
 
-### 🆕 v0.5.0 — Migracja funkcji kolarskich z Tri_Dashboard
+### 🆕 v0.6.0 — Uspójnienie z Tri_Dashboard, poprawki UI i aplikacja Dock
 
-**Nowe zakładki (10):**
-| Zakładka | Sekcja | Opis |
-|----------|--------|------|
-| 🏁 Race Predictor | ⚡ Performance | Predykcja mocy wyścigowej z korektami środowiskowymi |
-| 🛡️ Durability | ⚡ Performance | Durability Index, analiza sezonowa, rekomendacje |
-| 📊 Training Distribution | ⚡ Performance | Time-in-Zone (power/HR/SmO2), balance score |
-| ⏱️ TTE | ⚡ Performance | Time To Exhaustion na zadanej intensywności |
-| 🔴 Intervals | ⚡ Performance | Detekcja i analiza interwałów |
-| 🔋 W' Reconstitution | 🫀 Physiology | Mapa wyczerpania/odnowy W', cykle regeneracji |
-| 🌡️ Heat Strain | 🫀 Physiology | PSI/HSI z korektami środowiskowymi |
-| 🩸 SmO2 Thresholds | 🫀 Physiology | Detekcja progów SmO2, Exp-Dmax, Feldmann 4-phase |
-| 🚨 Alerts | 🫀 Physiology | Alerty fizjologiczne (cardiac drift, SmO2 crash, HRV) |
+**Naprawy migracyjne**
+- `plots.py` — dodane `CHART_CONFIG`, `CHART_HEIGHT_MAIN/SUB` (7 zakładek znikało po cichu przez `ImportError`).
+- `thresholds.py` — przywrócone obliczanie **histerezy** i **wrażliwości** VT w `analyze_step_test` (regres migracyjny).
+- `shared.py` — `chart()` z trybem **box-select** (zaznaczanie przeciągnięciem jak w Tri); `metric()` bez `delta_color=None`.
 
-**Nowe moduły obliczeniowe (10):**
-- `w_prime_reconstitution.py` — Mapa rekonstytucji W' (Skiba + Caen bi-exponential)
-- `race_predictor.py` — Predykcja mocy wyścigowej z korektami wiatr/temperatura/trasa
-- `training_distribution.py` — Time-in-Zone dla power/HR/SmO2
-- `durability.py` — Durability Index + analiza sezonowa + rekomendacje
-- `heat_strain.py` — Enhanced Heat Strain Index z korektami środowiskowymi
-- `smo2_thresholds.py` — Detekcja progów SmO2 (Moxy, Exp-Dmax)
-- `smo2_analysis.py` — Zaawansowana analiza SmO2 (Feldmann 4-phase, HR coupling)
-- `smo2/` — Pakiet SmO2 (classifier, calculator, types, constants)
-- `plateau_detector.py` — Detekcja плато w trendach
-- `alert_engine.py` — Silnik alertów fizjologicznych
+**Nowa grupa 🚴 Cycling (6 zakładek)** — MPA, VLaMax, Aerobic Efficiency, Training Impact, Banister, Periodization
+(+ moduły `mpa`, `vlamax_profile`, `aerobic_efficiency`, `training_impact`, `banister`, `pmc`, `periodization`, `column_aliases`).
 
-**Nowe moduły eksportu (3):**
-- `tcx_generator.py` — Generowanie plików TCX
-- `zone_exporter.py` — Eksport stref mocy/HR do CSV
-- `workout_exporter.py` — Eksport treningów do TrainingPeaks CSV
+**Podłączone zakładki kolarskie** — TTE, W′bal Recon, Durability, Race Predictor, Training Distribution, Heat Strain.
 
-**Nowe moduły danych (3):**
-- `db/athlete_profiles.py` — Tabela profili zawodnika (CP, W', VT, antropometria)
-- `db/base.py` — Baza abstrakcyjna dla SQLite stores
-- `social/reference_data.py` — Benchmarki percentylowe kolarstwa
+**Parametry domyślne** — sidebar wyrównany do Tri_Dashboard (waga 97, CP 380, W′ 15600, VT1 310, VT2 360, VT1/VT2 wentylacyjne 73/105).
 
-**Adaptacje:**
-- Dodano `calculate_w_prime_biexp` (Caen 2021) do `w_prime.py`
-- Dodano `make_cache_key` do `cache_utils.py`
-- Dodano `detect_exp_dmax`, `detect_smo2_breakpoints` do `smo2_breakpoints.py`
-- Zaktualizowano `__init__.py` (83 eksportowane symbole)
-- Zaktualizowano `app.py` — TabRegistry + rendering nowych zakładek
+**Aplikacja na Dock (macOS)** — `build_app.sh` (aplet AppleScript + własna ikona `NSWorkspace`), `launcher.sh`, `make_icon.py`.
 
-**Testy:** 157 passed, 0 regresji
+> ℹ️ Integracja **intervals.icu** została świadomie usunięta z tej wersji.
 
-### 🔧 Changelog (v0.4.0)
+**Testy:** 253 passed, 0 regresji.
 
-### 🔴 Critical Security Fixes
-- **RCE via `eval()`** — Usunięto `eval(f"pl.{condition}")` z `polars_adapter.py`; nowe API: `filter(col, op, value)` z typowanymi parametrami
-- **Audit Trail** — Zamieniono `print()` na `logger` w security-gating (`persistence.py:176,182`) — teraz decyzje gatingu są logowane z timestamp i severity
+<details>
+<summary><strong>Wcześniejsze wersje (v0.5.0 – v0.3.1)</strong></summary>
 
-### 🟠 High Priority Fixes
-- **Duplicate Docstring** — Usunięto zduplikowany body w `normalize_columns_pandas()` (`utils.py`)
-- **Missing Logger** — Dodano `import logging` + `logger` w `data_processing.py` (eliminacja `NameError`)
-- **Unreachable Except** — Usunięto nieosiągalny drugi `except` block w `data_processing.py`
-- **Dead Code** — Usunięto zduplikowany `save_model` body + bug `sub_v` jako klucz w `ml_logic.py`
-- **Path Traversal** — Sanitizacja `../`, `/`, `\` z nazw plików w `notes.py`; `NOTES_DIR` resolved do project root
-- **XSS** — `html.escape()` na `group`/`section` w `show_breadcrumb()` (`components.py`)
-- **Hardcoded Serial** — Zamieniono `12345678` na konfigurowalny `serial_number` w `fit_exporter.py`
-- **Error Handling** — Dodano `try/except` z logowaniem w `load_notes()`/`save_notes()` (`notes.py`)
-- **Print→Logger** — Zamieniono 40+ `print()` na `logger` w `persistence.py`, `figures/__init__.py`, `builder.py`, `summary_pdf.py`
+### v0.5.0 — Migracja funkcji kolarskich z Tri_Dashboard
+Port modułów mocy/SmO2/termiki, tabela profili zawodnika (`db/athlete_profiles.py`),
+eksport TCX/CSV, benchmarki referencyjne, `calculate_w_prime_biexp` (Caen 2021).
 
-### 🟡 Medium Priority Fixes
-- **DataFrame Mutation** — `validate_test()` teraz kopiuje DataFrame przed modyfikacją kolumn (`pipeline.py`)
-- **Settings Contract** — `save_settings()` zwraca `False` zamiast `True` gdy persistence wyłączone (`settings.py`)
-- **Duplicate Import** — Usunięto zduplikowany `RAMP_METHOD_VERSION` import i `logger` w `persistence.py`
-- **File Hash** — `hashlib.md5(content)` zamiast `hash(name+size)` w `app.py`
+### v0.4.0 — Bezpieczeństwo i jakość kodu
+Usunięcie `eval()` (RCE) z `polars_adapter.py`, ochrona XSS (`html.escape`), zapobieganie path traversal
+w `notes.py`, kopiowanie DataFrame przed mutacją, 40+ `print()` → `logger`.
 
-### 🟢 Low Priority Fixes
-- **Safe Msg** — `safe_msg` zachowuje pełny komunikat z confidence ramp testu zamiast nadpisywania (`app.py`)
-- **Dead Assignment** — Usunięto nieużywane `max_hr` w `app.py:328`
-- **Duplicate Imports** — Wyczyszczone w `persistence.py`
+### v0.3.1 — Poprawki fizjologii
+Korekta frakcji CHO (30/70/90%), korekcja GE w VO₂max, wykładniczy model rekonstytucji W′ (Skiba),
+walidacja VT1 < VT2, HSI z wagami 70/30, próg VT1 slope 0.05 → 0.07.
+
+</details>
 
 ---
 
-## 🔧 Changelog (v0.3.1)
+## 📝 Licencja i autor
 
-### 🐛 Critical Fixes (P0)
-- **CHO Fractions** — Poprawione wartości 0.4/0.7/1.0 → 0.30/0.70/0.90 (badania pokazują ~30/70/90% nie 40/70/100%)
-- **VO2max Formula** — Dodana korekcja GE (Gross Efficiency) dla dokładniejszej estymacji
-- **W' Balance** — Zmieniono model liniowy na wykładniczy (Skiba model) dla rekonstytucji W'
-- **DataFrame Mutation** — Naprawiona mutacja input DataFrame w `thermal.py`, `session_analysis.py`
-- **DFA Quality Grade** — Naprawiona inwertowana logika porównania stringów (max('C', 'A') zwracało 'C')
-- **Metrics Dict** — Usunięto DataFrame z metadanych (przyczyna problemów z serializacją)
-
-### ⚠️ High Priority Fixes (P1)
-- **Stamina Score** — Teraz uwzględnia parametr W' w obliczeniach (20% wagi)
-- **VLamax Disclaimer** — Dodane ostrzeżenie o ±30% niepewności estymacji
-- **VT1 Slope Threshold** — Zwiększone z 0.05 do 0.07 (mniej false positives)
-- **Glycogen Model** — Naprawione podwójne liczenie modyfikatorów mechanicznych
-- **HSI Formula** — Poprawione wagi: Temperatura 70%, HR 30% (wcześniej odwrotnie)
-- **Summary Tab** — Naprawione hardcoded zera dla LT1/LT2 (teraz używa VT1/VT2 jako proxy)
-- **HRV Cache** — Dodany limit LRU cache + SHA-256 zamiast MD5
-- **df.columns Mutation** — Dodane `.copy()` przed modyfikacją w `thresholds.py`
-
-### 🔨 Medium Priority Fixes (P2)
-- **Work [kJ]** — Poprawione obliczenia dla próbek nie-1s (używa rzeczywistych dt)
-- **VT1 < VT2 Validation** — Dodana walidacja i automatyczna korekta odwróconych wartości
-- **CHO Base** — Zmniejszone z 30g/h do 20g/h przy niskiej intensywności
-- **Debug Prints** — Usunięte printy debug z `hrv.py`
-- **Double Logger** — Usunięty duplikat logger w `smo2_advanced.py`
-- **File Hash** — SHA-256 zamiast prostego hash dla uniknięcia kolizji
-- **XSS Protection** — Dodane `html.escape()` dla session_type w unsafe_allow_html
-
-### 📝 Low Priority / UI (P3)
-- **FRI Warning** — Dodany komunikat o wymaganiu min. 60 min sesji dla wiarygodnego FRI
-- **VLamax UI Disclaimer** — Wyświetlane ostrzeżenie o niepewności w interpretacji
----
-
-## 📝 License
-
-MIT License — Zobacz [LICENSE](LICENSE) dla szczegółów.
-
----
-
-## 👤 Autor
-
-**Wielki Krzych** — [GitHub](https://github.com/WielkiKrzych)
+**Licencja:** MIT — zobacz [LICENSE](LICENSE).
+**Autor:** **Wielki Krzych** — [GitHub](https://github.com/WielkiKrzych)
 
 <p align="center">
-  <sub>Built with ❤️ using Streamlit, Pandas & NumPy</sub>
+  <sub>Zbudowane z ❤️ na Streamlit · Pandas · NumPy · Plotly</sub>
 </p>
-
----
-
-## Uwagi
-
-**Zaktualizowano (v0.5.0):** Większość funkcji z Tri_Dashboard została przeniesiona do Analiza Kolarska.
-
-**Nadal nieprzeniesione:**
-- Archiwum testów rampowych (Ramp Archive)
-- AI Coach
-- Generowanie raportów PDF/PNG z sidebar
-- Zakładka Vent - Progi Manuals
-
-**Pozostałe sekcje w Podsumowaniu:**
-1. Przebieg Treningu
-2. Wentylacja (VE) i Oddechy (BR)
-3. SmO2 vs THb w czasie
-4. Threshold Discordance Index (TDI)
-5. Estymacja VO2max z Niepewnością (CI95%)
-6. Walidacja Danych i Pewność Progów
