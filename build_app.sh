@@ -60,9 +60,10 @@ cp "$ICONSET/icon_64x64.png"     "$ICONSET/icon_32x32@2x.png"
 cp "$ICONSET/icon_256x256.png"   "$ICONSET/icon_128x128@2x.png"
 cp "$ICONSET/icon_512x512.png"   "$ICONSET/icon_256x256@2x.png"
 cp "$ICONSET/icon_1024x1024.png" "$ICONSET/icon_512x512@2x.png"
-# osacompile sets CFBundleIconFile to "applet" — overwrite that icns file
+# Write the .icns as BOTH names osacompile/AppKit may use, and as AppIcon.icns
 iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/applet.icns"
-echo "  -> icon installed"
+cp "$APP_DIR/Contents/Resources/applet.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
+echo "  -> icns installed"
 
 # --- 3. Info.plist tweaks (name, id, agent app) -----------------------------
 PLIST="$APP_DIR/Contents/Info.plist"
@@ -70,16 +71,32 @@ PB=/usr/libexec/PlistBuddy
 $PB -c "Set :CFBundleName $APP_NAME"        "$PLIST" 2>/dev/null || $PB -c "Add :CFBundleName string $APP_NAME" "$PLIST"
 $PB -c "Set :CFBundleDisplayName $APP_NAME" "$PLIST" 2>/dev/null || $PB -c "Add :CFBundleDisplayName string $APP_NAME" "$PLIST"
 $PB -c "Set :CFBundleIdentifier $BUNDLE_ID" "$PLIST" 2>/dev/null || $PB -c "Add :CFBundleIdentifier string $BUNDLE_ID" "$PLIST"
+$PB -c "Set :CFBundleIconFile applet"       "$PLIST" 2>/dev/null || $PB -c "Add :CFBundleIconFile string applet" "$PLIST"
 $PB -c "Set :LSUIElement true"              "$PLIST" 2>/dev/null || $PB -c "Add :LSUIElement bool true" "$PLIST"
 echo "  -> Info.plist patched"
 
-# --- 4. De-quarantine, adhoc sign, refresh icon cache -----------------------
+# --- 4. De-quarantine, adhoc sign -------------------------------------------
 xattr -dr com.apple.quarantine "$APP_DIR" 2>/dev/null || true
 codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || true
 
-# Force macOS to re-read the bundle icon (rebuilds leave the Dock/Finder icon
-# cache stale, so the icon can appear blank).
-touch "$APP_DIR" "$APP_DIR/Contents/Resources/applet.icns"
+# --- 5. Force a real custom Finder icon via AppKit (authoritative override) --
+# osacompile applets otherwise keep the default white "script" icon; setting
+# the icon through NSWorkspace writes the custom-icon resource that Finder and
+# the Dock actually read. Done AFTER signing so it isn't stripped.
+osascript - "$ICON_PNG" "$APP_DIR" >/dev/null 2>&1 <<'OSA' || echo "  (custom-icon step skipped)"
+use framework "AppKit"
+use scripting additions
+on run argv
+	set imgPath to item 1 of argv
+	set appPath to item 2 of argv
+	set img to current application's NSImage's alloc()'s initWithContentsOfFile:imgPath
+	current application's NSWorkspace's sharedWorkspace()'s setIcon:img forFile:appPath options:0
+end run
+OSA
+echo "  -> custom icon applied"
+
+# --- 6. Bust icon/LaunchServices caches -------------------------------------
+touch "$APP_DIR"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_DIR" >/dev/null 2>&1 || true
 killall Dock 2>/dev/null || true
