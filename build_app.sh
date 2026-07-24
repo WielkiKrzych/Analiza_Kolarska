@@ -76,7 +76,13 @@ echo "  -> Info.plist patched"
 # --- 4. De-quarantine, adhoc sign, refresh icon cache -----------------------
 xattr -dr com.apple.quarantine "$APP_DIR" 2>/dev/null || true
 codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || true
-touch "$APP_DIR"
+
+# Force macOS to re-read the bundle icon (rebuilds leave the Dock/Finder icon
+# cache stale, so the icon can appear blank).
+touch "$APP_DIR" "$APP_DIR/Contents/Resources/applet.icns"
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+[ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_DIR" >/dev/null 2>&1 || true
+killall Dock 2>/dev/null || true
 
 rm -rf "$WORK"
 echo ""
@@ -84,3 +90,7 @@ echo "=== Done ==="
 echo "App:  $APP_DIR"
 echo "Run:  open \"$APP_DIR\""
 echo "Log:  /tmp/analiza_kolarska_launch.log"
+echo ""
+echo "If the Dock still shows a blank icon: remove the app from the Dock and"
+echo "drag it back from $(dirname "$APP_DIR") — a rebuild replaces the bundle,"
+echo "which orphans a previously pinned Dock item."

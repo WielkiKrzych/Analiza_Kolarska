@@ -24,7 +24,10 @@ def chart(
     if key:
         kwargs["key"] = key
     if use_selection:
-        return st.plotly_chart(fig, on_select="rerun", **kwargs)
+        # Box-select must be the default drag action, otherwise dragging just
+        # zooms and on_select never fires (the selection window won't update).
+        fig.update_layout(dragmode="select", selectdirection="h")
+        return st.plotly_chart(fig, on_select="rerun", selection_mode="box", **kwargs)
     st.plotly_chart(fig, **kwargs)
     return None
 
@@ -34,7 +37,7 @@ def metric(
     value: float | int | str | None,
     *,
     delta: str | float | int | None = None,
-    delta_color: str | None = None,
+    delta_color: str | None = "off",
     help: str | None = None,
     column: st.columns | None = None,
     prefix: str = "",
@@ -56,12 +59,7 @@ def metric(
         display = f"{prefix}{value}{suffix}"
 
     target = column if column is not None else st
-    # Streamlit rejects delta_color=None; only pass it when explicitly set
-    # (its own default is "normal").
-    kwargs = {"delta": delta, "help": help}
-    if delta_color is not None:
-        kwargs["delta_color"] = delta_color
-    target.metric(label, display, **kwargs)
+    target.metric(label, display, delta=delta, delta_color=delta_color, help=help)
 
 
 def require_data(df: pd.DataFrame | None, *, column: str | None = None) -> bool:
