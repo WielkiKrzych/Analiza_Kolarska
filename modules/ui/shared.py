@@ -56,7 +56,12 @@ def metric(
         display = f"{prefix}{value}{suffix}"
 
     target = column if column is not None else st
-    target.metric(label, display, delta=delta, delta_color=delta_color, help=help)
+    # Streamlit rejects delta_color=None; only pass it when explicitly set
+    # (its own default is "normal").
+    kwargs = {"delta": delta, "help": help}
+    if delta_color is not None:
+        kwargs["delta_color"] = delta_color
+    target.metric(label, display, **kwargs)
 
 
 def require_data(df: pd.DataFrame | None, *, column: str | None = None) -> bool:
