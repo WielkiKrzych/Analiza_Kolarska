@@ -180,13 +180,42 @@ def analyze_step_test(  # noqa: C901
                     "⚠️ VT1/VT2 detection returned zero values - check data quality"
                 )
 
-        # Process decoupling data if available
-        try:
-            if not df_dec.empty:
-                # Decoupling analysis - existing logic placeholder
-                pass
-        except NameError:
-            pass
+        # Hysteresis analysis: compare VT zones on the decreasing-load phase
+        # against the increasing-load phase (fatigue-driven leftward shift).
+        if not df_dec.empty:
+            vt1_dec, vt2_dec = detect_vt_transition_zone(
+                df_dec,
+                window_duration=60,
+                step_size=5,
+                ve_column=ve_column,
+                power_column=power_column,
+                hr_column=hr_column,
+                time_column=time_column,
+            )
+            h = HysteresisResult(
+                vt1_inc_zone=vt1_inc,
+                vt1_dec_zone=vt1_dec,
+                vt2_inc_zone=vt2_inc,
+                vt2_dec_zone=vt2_dec,
+            )
+            if vt1_inc and vt1_dec:
+                h.vt1_shift_watts = (
+                    sum(vt1_dec.range_watts) / 2 - sum(vt1_inc.range_watts) / 2
+                )
+            if vt2_inc and vt2_dec:
+                h.vt2_shift_watts = (
+                    sum(vt2_dec.range_watts) / 2 - sum(vt2_inc.range_watts) / 2
+                )
+            result.hysteresis = h
+
+        # Sensitivity analysis: stability of VT detection under resampling/noise
+        result.sensitivity = run_sensitivity_analysis(
+            df_inc,
+            ve_column=ve_column,
+            power_column=power_column,
+            hr_column=hr_column,
+            time_column=time_column,
+        )
 
     return result
 

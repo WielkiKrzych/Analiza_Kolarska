@@ -1,5 +1,25 @@
 import plotly.graph_objects as go
 
+# ── Chart height presets ────────────────────────────────────────────────────
+CHART_HEIGHT_MAIN = 550  # primary timeline charts (Power, HR, SmO2, etc.)
+CHART_HEIGHT_SUB = 380   # secondary charts (scatter, trend, model)
+
+# ── Global Plotly config (passed to st.plotly_chart(config=...)) ────────────
+CHART_CONFIG = {
+    "displaylogo": False,
+    "modeBarButtonsToRemove": ["sendDataToCloud", "select2d", "lasso2d"],
+    "displayModeBar": "hover",
+    "scrollZoom": False,
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "cycling_chart",
+        "height": 600,
+        "width": 1400,
+        "scale": 2,
+    },
+}
+
+
 def apply_chart_style(fig, title=None):
     fig.update_layout(
         template="plotly_dark",

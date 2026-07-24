@@ -223,3 +223,19 @@ def cached_generate_summary_pdf(*args, **kwargs) -> bytes:
     from modules.reporting.pdf.summary_pdf import generate_summary_pdf
 
     return generate_summary_pdf(*args, **kwargs)
+
+
+def get_session_store() -> "SessionStore":  # noqa: F821
+    """Get cached SessionStore singleton.
+
+    Uses st.cache_resource to persist the SQLite connection across Streamlit
+    reruns, avoiding re-initialization on every interaction.
+    """
+    import streamlit as st
+    from modules.db import SessionStore
+
+    @st.cache_resource
+    def _get_store() -> "SessionStore":
+        return SessionStore()
+
+    return _get_store()

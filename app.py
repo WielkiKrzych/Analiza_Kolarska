@@ -49,6 +49,29 @@ class TabRegistry:
         "heart_rate": ("modules.ui.heart_rate", "render_hr_tab"),
         "summary": ("modules.ui.summary", "render_summary_tab"),
         "drift_maps": ("modules.ui.drift_maps_ui", "render_drift_maps_tab"),
+        # --- Cycling features migrated from Tri_Dashboard ---
+        "tte": ("modules.ui.tte_ui", "render_tte_tab"),
+        "race_predictor": ("modules.ui.race_predictor_ui", "render_race_predictor_tab"),
+        "training_distribution": (
+            "modules.ui.training_distribution_ui",
+            "render_training_distribution_tab",
+        ),
+        "durability": ("modules.ui.durability_ui", "render_durability_tab"),
+        "w_prime_reconstitution": (
+            "modules.ui.w_prime_reconstitution_ui",
+            "render_w_prime_reconstitution_tab",
+        ),
+        "heat_strain": ("modules.ui.heat_strain_ui", "render_heat_strain_tab"),
+        # --- Cycling analytics migrated from Tri_Dashboard (Phase 5) ---
+        "mpa": ("modules.ui.mpa_ui", "render_mpa_tab"),
+        "vlamax": ("modules.ui.vlamax_ui", "render_vlamax_tab"),
+        "aerobic_efficiency": (
+            "modules.ui.aerobic_efficiency_ui",
+            "render_aerobic_efficiency_tab",
+        ),
+        "training_impact": ("modules.ui.training_impact_ui", "render_training_impact_tab"),
+        "banister": ("modules.ui.banister_ui", "render_banister_tab"),
+        "periodization": ("modules.ui.periodization_ui", "render_periodization_tab"),
     }
 
     @classmethod
@@ -238,8 +261,8 @@ if uploaded_file is not None:
         )
 
     # Layout Tabs
-    tab_overview, tab_performance, tab_intelligence, tab_physiology = st.tabs(
-        ["📊 Overview", "⚡ Performance", "🧠 Intelligence", "🫀 Physiology"]
+    tab_overview, tab_performance, tab_intelligence, tab_physiology, tab_cycling = st.tabs(
+        ["📊 Overview", "⚡ Performance", "🧠 Intelligence", "🫀 Physiology", "🚴 Cycling"]
     )
 
     with tab_overview:
@@ -277,7 +300,7 @@ if uploaded_file is not None:
 
     with tab_performance:
         UIComponents.show_breadcrumb("⚡ Performance")
-        t1, t2, t3, t4, t5, t6 = st.tabs(
+        t1, t2, t3, t4, t5, t6, t7, t8, t9 = st.tabs(
             [
                 "🔋 Power",
                 "🦵 Biomech",
@@ -285,6 +308,9 @@ if uploaded_file is not None:
                 "❤️ HR",
                 "🧬 Hematology",
                 "📈 Drift Maps",
+                "⏱️ TTE",
+                "🔗 W'bal Recon",
+                "🛡️ Durability",
             ]
         )
         with t1:
@@ -307,23 +333,68 @@ if uploaded_file is not None:
             render_tab_content("hemo", df_plot)
         with t6:
             render_tab_content("drift_maps", df_plot)
+        with t7:
+            render_tab_content("tte", df_plot, cp_input, uploaded_file.name)
+        with t8:
+            render_tab_content(
+                "w_prime_reconstitution",
+                df_plot,
+                df_plot_resampled,
+                metrics,
+                rider_weight,
+                cp_input,
+                w_prime_input,
+            )
+        with t9:
+            render_tab_content(
+                "durability",
+                df_plot,
+                df_plot_resampled,
+                metrics,
+                rider_weight,
+                cp_input,
+                w_prime_input,
+            )
 
     with tab_intelligence:
         UIComponents.show_breadcrumb("🧠 Intelligence")
-        t1, t2 = st.tabs(["🍎 Nutrition", "🚧 Limiters"])
+        t1, t2, t3, t4 = st.tabs(
+            ["🍎 Nutrition", "🚧 Limiters", "🏁 Race Predictor", "📊 Training Distribution"]
+        )
         with t1:
             render_tab_content("nutrition", df_plot, cp_input, vt1_watts, vt2_watts)
         with t2:
             render_tab_content("limiters", df_plot, cp_input, vt2_vent)
+        with t3:
+            render_tab_content(
+                "race_predictor",
+                df_plot,
+                df_plot_resampled,
+                metrics,
+                rider_weight,
+                cp_input,
+                w_prime_input,
+            )
+        with t4:
+            render_tab_content(
+                "training_distribution",
+                df_plot,
+                df_plot_resampled,
+                metrics,
+                rider_weight,
+                cp_input,
+                w_prime_input,
+            )
 
     with tab_physiology:
         UIComponents.show_breadcrumb("🫀 Physiology")
-        t1, t2, t3, t4 = st.tabs(
+        t1, t2, t3, t4, t5 = st.tabs(
             [
                 "💓 HRV",
                 "🩸 SmO2",
                 "🫁 Ventilation",
                 "🌡️ Thermal",
+                "🔥 Heat Strain",
             ]
         )
         with t1:
@@ -334,6 +405,45 @@ if uploaded_file is not None:
             render_tab_content("vent", df_plot, training_notes, uploaded_file.name)
         with t4:
             render_tab_content("thermal", df_plot)
+        with t5:
+            render_tab_content(
+                "heat_strain",
+                df_plot,
+                df_plot_resampled,
+                metrics,
+                rider_weight,
+                cp_input,
+                w_prime_input,
+                params.get("hr_max"),
+                params.get("hr_rest"),
+                rider_age,
+                is_male,
+            )
+
+    with tab_cycling:
+        UIComponents.show_breadcrumb("🚴 Cycling")
+        t1, t2, t3, t4, t5, t6 = st.tabs(
+            [
+                "🎯 MPA",
+                "🧪 VLaMax",
+                "♻️ Aerobic Efficiency",
+                "📈 Training Impact",
+                "🗓️ Banister",
+                "📅 Periodization",
+            ]
+        )
+        with t1:
+            render_tab_content("mpa", df_plot, cp_input, w_prime_input)
+        with t2:
+            render_tab_content("vlamax", df_plot, cp_input, w_prime_input, rider_weight)
+        with t3:
+            render_tab_content("aerobic_efficiency", df_plot, cp_input)
+        with t4:
+            render_tab_content("training_impact", df_plot, cp_input, w_prime_input)
+        with t5:
+            render_tab_content("banister")
+        with t6:
+            render_tab_content("periodization")
 
 else:
     st.sidebar.info("Wgraj plik.")

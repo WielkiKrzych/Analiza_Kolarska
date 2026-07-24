@@ -1,12 +1,11 @@
 
 import pandas as pd
 import numpy as np
-import sys
-
-# Add project root to path
-sys.path.append('/Users/wielkikrzych/Desktop/Tri_Dashboard')
 
 from modules.calculations.thresholds import analyze_step_test
+
+# Deterministic noise so stability scoring is reproducible across runs.
+np.random.seed(42)
 
 def create_sensitivity_data(noise_level=0.1):
     """
