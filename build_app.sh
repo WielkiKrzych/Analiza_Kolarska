@@ -41,10 +41,13 @@ fi
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RES_DIR"
 
-# 2. Executable — a thin launcher that calls the repo's launcher.sh
+# 2. Executable — fires the repo's launcher.sh in the BACKGROUND and returns
+#    immediately. If it blocked (exec) on the launcher's readiness loop, macOS
+#    would flag the app as "not responding".
 cat > "$MACOS_DIR/AnalizaKolarska" <<EOF
 #!/bin/bash
-exec "$SCRIPT_DIR/launcher.sh"
+nohup "$SCRIPT_DIR/launcher.sh" >/dev/null 2>&1 &
+exit 0
 EOF
 chmod 755 "$MACOS_DIR/AnalizaKolarska"
 chmod 755 "$SCRIPT_DIR/launcher.sh" 2>/dev/null || true
