@@ -78,6 +78,7 @@ class TabRegistry:
         "alerts": ("modules.ui.alerts", "render_alerts_tab"),
         "smo2_thresholds": ("modules.ui.smo2_thresholds", "render_smo2_thresholds_tab"),
         "intervals": ("modules.ui.intervals_ui", "render_intervals_tab"),
+        "power_trends": ("modules.ui.power_trends_ui", "render_power_trends_tab"),
     }
 
     @classmethod
@@ -294,8 +295,8 @@ if uploaded_file is not None:
 
     with tab_overview:
         UIComponents.show_breadcrumb("📊 Overview")
-        t1, t2, t3, t4 = st.tabs(
-            ["📋 Raport z KPI", "📊 Podsumowanie", "📅 Load (PMC)", "🔀 Compare"]
+        t1, t2, t3, t4, t5 = st.tabs(
+            ["📋 Raport z KPI", "📊 Podsumowanie", "📅 Load (PMC)", "🔀 Compare", "📈 Moc w czasie"]
         )
         with t1:
             render_tab_content(
@@ -326,10 +327,45 @@ if uploaded_file is not None:
                 vt1_watts,  # FIXED: lt1_watts - use VT1 as proxy (VT1 ≈ LT1)
                 vt2_watts,  # FIXED: lt2_watts - use VT2 as proxy (VT2 ≈ LT2)
             )
+            st.divider()
+            with st.expander("📄 Eksport raportu PDF"):
+                if st.button("Generuj raport PDF", key="btn_gen_pdf"):
+                    with st.spinner("Generowanie PDF…"):
+                        try:
+                            from modules.cache_utils import cached_generate_summary_pdf
+
+                            pdf_bytes = cached_generate_summary_pdf(
+                                df_plot,
+                                metrics,
+                                cp_input,
+                                w_prime_input,
+                                rider_weight,
+                                vt1_watts,
+                                vt2_watts,
+                                vt1_watts,  # lt1 proxy
+                                vt2_watts,  # lt2 proxy
+                                st.session_state.get("threshold_result"),
+                                st.session_state.get("smo2_result"),
+                                uploaded_file.name,
+                            )
+                            st.session_state["summary_pdf_bytes"] = pdf_bytes
+                        except Exception as e:
+                            logger.warning(f"PDF generation failed: {e}")
+                            st.error(f"Nie udało się wygenerować PDF: {e}")
+                if st.session_state.get("summary_pdf_bytes"):
+                    st.download_button(
+                        "⬇️ Pobierz PDF",
+                        data=st.session_state["summary_pdf_bytes"],
+                        file_name=f"raport_{uploaded_file.name}.pdf",
+                        mime="application/pdf",
+                        key="dl_summary_pdf",
+                    )
         with t3:
             render_tab_content("load")
         with t4:
             render_tab_content("compare")
+        with t5:
+            render_tab_content("power_trends")
 
     with tab_performance:
         UIComponents.show_breadcrumb("⚡ Performance")

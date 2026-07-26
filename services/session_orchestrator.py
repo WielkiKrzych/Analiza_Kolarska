@@ -104,6 +104,17 @@ def prepare_session_record(
     tss_header: float
 ) -> Dict[str, Any]:
     """Prepare session data for database storage."""
+
+    def _mmp(window_sec: int):
+        """Mean-maximal power over a window (assumes ~1 Hz samples)."""
+        if 'watts' not in df_plot.columns or len(df_plot) < window_sec:
+            return None
+        try:
+            val = df_plot['watts'].rolling(window_sec, min_periods=window_sec).mean().max()
+            return float(val) if val == val else None  # filter NaN
+        except Exception:
+            return None
+
     return {
         'date': date.today().isoformat(),
         'filename': filename,
@@ -117,6 +128,10 @@ def prepare_session_record(
         'work_kj': metrics.get('work_kj', 0),
         'avg_cadence': metrics.get('avg_cadence', 0),
         'avg_rmssd': metrics.get('avg_rmssd'),
+        'mmp_5s': _mmp(5),
+        'mmp_1m': _mmp(60),
+        'mmp_5m': _mmp(300),
+        'mmp_20m': _mmp(1200),
     }
 
 
