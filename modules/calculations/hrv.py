@@ -254,10 +254,9 @@ def calculate_dynamic_dfa_v2(  # noqa: C901
         Tuple of (results DataFrame, error message or None)
     """
     # Check cache first
-    cache_key = _generate_cache_key(df_pl, window_sec, step_sec, min_samples_hrv, alpha1_clip_range)
-    if cache_key in dfa_cache:
-        # FIXED: Removed debug print for cleaner logs
-        return dfa_cache[cache_key]
+    cache_key = _get_cache_key(df_pl, window_sec, step_sec, min_samples_hrv, alpha1_clip_range)
+    if cache_key in _dfa_cache:
+        return _dfa_cache[cache_key]
 
     # FIXED: Removed debug print for cleaner logs
     df = ensure_pandas(df_pl)
@@ -376,8 +375,10 @@ def calculate_dynamic_dfa_v2(  # noqa: C901
             }
         )
 
-        # Store in cache
-        dfa_cache[cache_key] = (results, None)
+        # Store in cache (bounded: drop oldest entry when at capacity)
+        if len(_dfa_cache) >= _MAX_CACHE_SIZE:
+            _dfa_cache.pop(next(iter(_dfa_cache)), None)
+        _dfa_cache[cache_key] = (results, None)
 
         return results, None
 

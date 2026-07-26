@@ -69,7 +69,8 @@ else:
         return np.gradient(smo2_vals, power_vals)
 
     def _fast_curvature(smo2_vals, power_vals):
-        """Fallback curvature calculation."""
+        """Fallback curvature calculation (2nd derivative of SmO2 vs power)."""
+        grad = np.gradient(smo2_vals, power_vals)
         return np.gradient(grad, power_vals)
 
 # FIXED: Removed duplicate logger definition (was on line 76)
