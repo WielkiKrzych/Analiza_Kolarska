@@ -72,6 +72,10 @@ class TabRegistry:
         "training_impact": ("modules.ui.training_impact_ui", "render_training_impact_tab"),
         "banister": ("modules.ui.banister_ui", "render_banister_tab"),
         "periodization": ("modules.ui.periodization_ui", "render_periodization_tab"),
+        # --- Longitudinal / whole-athlete analysis ---
+        "load": ("modules.ui.training_load_ui", "render_training_load_tab"),
+        "compare": ("modules.ui.compare", "render_comparison_tab"),
+        "alerts": ("modules.ui.alerts", "render_alerts_tab"),
     }
 
     @classmethod
@@ -260,6 +264,27 @@ if uploaded_file is not None:
             unsafe_allow_html=True,
         )
 
+    # Physiological alert report (overtraining risk, cardiac drift, SmO2 crash, HRV)
+    try:
+        from modules.calculations.alert_engine import analyze_session_alerts
+
+        _history = SessionStore().get_sessions(days=90)
+        _session_history = [
+            {
+                "date": r.date,
+                "avg_rmssd": r.avg_rmssd,
+                "session_type": getattr(r, "session_type", None),
+                "tss": r.tss,
+            }
+            for r in _history
+        ]
+        alert_report = analyze_session_alerts(df_plot, metrics, session_history=_session_history)
+    except Exception as e:
+        logger.warning(f"Alert engine failed: {e}")
+        from modules.calculations.alert_engine import AlertReport
+
+        alert_report = AlertReport()
+
     # Layout Tabs
     tab_overview, tab_performance, tab_intelligence, tab_physiology, tab_cycling = st.tabs(
         ["📊 Overview", "⚡ Performance", "🧠 Intelligence", "🫀 Physiology", "🚴 Cycling"]
@@ -267,7 +292,9 @@ if uploaded_file is not None:
 
     with tab_overview:
         UIComponents.show_breadcrumb("📊 Overview")
-        t1, t2 = st.tabs(["📋 Raport z KPI", "📊 Podsumowanie"])
+        t1, t2, t3, t4 = st.tabs(
+            ["📋 Raport z KPI", "📊 Podsumowanie", "📅 Load (PMC)", "🔀 Compare"]
+        )
         with t1:
             render_tab_content(
                 "report",
@@ -297,6 +324,10 @@ if uploaded_file is not None:
                 vt1_watts,  # FIXED: lt1_watts - use VT1 as proxy (VT1 ≈ LT1)
                 vt2_watts,  # FIXED: lt2_watts - use VT2 as proxy (VT2 ≈ LT2)
             )
+        with t3:
+            render_tab_content("load")
+        with t4:
+            render_tab_content("compare")
 
     with tab_performance:
         UIComponents.show_breadcrumb("⚡ Performance")
@@ -388,13 +419,14 @@ if uploaded_file is not None:
 
     with tab_physiology:
         UIComponents.show_breadcrumb("🫀 Physiology")
-        t1, t2, t3, t4, t5 = st.tabs(
+        t1, t2, t3, t4, t5, t6 = st.tabs(
             [
                 "💓 HRV",
                 "🩸 SmO2",
                 "🫁 Ventilation",
                 "🌡️ Thermal",
                 "🔥 Heat Strain",
+                "🚨 Alerts",
             ]
         )
         with t1:
@@ -419,6 +451,8 @@ if uploaded_file is not None:
                 rider_age,
                 is_male,
             )
+        with t6:
+            render_tab_content("alerts", alert_report)
 
     with tab_cycling:
         UIComponents.show_breadcrumb("🚴 Cycling")
