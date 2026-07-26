@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tri_dashboard"
+name = "analiza_kolarska"
 version = "0.1.0"
-description = "Advanced Triathlon Dashboard with AI Integration"
+description = "Analiza Kolarska — zaawansowany dashboard analizy mocy i fizjologii w kolarstwie"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [

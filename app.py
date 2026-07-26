@@ -76,6 +76,8 @@ class TabRegistry:
         "load": ("modules.ui.training_load_ui", "render_training_load_tab"),
         "compare": ("modules.ui.compare", "render_comparison_tab"),
         "alerts": ("modules.ui.alerts", "render_alerts_tab"),
+        "smo2_thresholds": ("modules.ui.smo2_thresholds", "render_smo2_thresholds_tab"),
+        "intervals": ("modules.ui.intervals_ui", "render_intervals_tab"),
     }
 
     @classmethod
@@ -389,8 +391,14 @@ if uploaded_file is not None:
 
     with tab_intelligence:
         UIComponents.show_breadcrumb("🧠 Intelligence")
-        t1, t2, t3, t4 = st.tabs(
-            ["🍎 Nutrition", "🚧 Limiters", "🏁 Race Predictor", "📊 Training Distribution"]
+        t1, t2, t3, t4, t5 = st.tabs(
+            [
+                "🍎 Nutrition",
+                "🚧 Limiters",
+                "🏁 Race Predictor",
+                "📊 Training Distribution",
+                "🔁 Intervals",
+            ]
         )
         with t1:
             render_tab_content("nutrition", df_plot, cp_input, vt1_watts, vt2_watts)
@@ -416,10 +424,20 @@ if uploaded_file is not None:
                 cp_input,
                 w_prime_input,
             )
+        with t5:
+            render_tab_content(
+                "intervals",
+                df_plot,
+                df_plot_resampled,
+                cp_input,
+                rider_weight,
+                rider_age,
+                is_male,
+            )
 
     with tab_physiology:
         UIComponents.show_breadcrumb("🫀 Physiology")
-        t1, t2, t3, t4, t5, t6 = st.tabs(
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
             [
                 "💓 HRV",
                 "🩸 SmO2",
@@ -427,6 +445,7 @@ if uploaded_file is not None:
                 "🌡️ Thermal",
                 "🔥 Heat Strain",
                 "🚨 Alerts",
+                "🩸 Progi SmO2",
             ]
         )
         with t1:
@@ -453,6 +472,14 @@ if uploaded_file is not None:
             )
         with t6:
             render_tab_content("alerts", alert_report)
+        with t7:
+            render_tab_content(
+                "smo2_thresholds",
+                df_plot,
+                training_notes,
+                uploaded_file.name,
+                cp_input,
+            )
 
     with tab_cycling:
         UIComponents.show_breadcrumb("🚴 Cycling")
