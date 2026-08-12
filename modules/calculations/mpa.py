@@ -31,12 +31,8 @@ class MPAProfile:
     time_to_exhaustion_at_peak: Optional[float] = None  # TTE at peak power [s]
 
 
-# ── Sport-specific time constants (same as w_prime.py bi-exponential) ──────
-_SPORT_TAU: dict[int, tuple[float, float, float]] = {
-    0: (120.0, 600.0, 0.50),  # Cycling
-    1: (150.0, 750.0, 0.45),  # Running
-    2: (90.0, 500.0, 0.55),  # Swimming
-}
+# ── Sport-specific time constants (single source of truth) ─────────────────
+from .sport_constants import MPA_RECOVERY_PARAMS
 
 
 def calculate_time_to_exhaustion(
@@ -95,7 +91,7 @@ def calculate_mpa(
     curr_w = w_prime_cap
     prev_time = time[0]
 
-    tau_fast, tau_slow, fast_frac = _SPORT_TAU.get(sport, _SPORT_TAU[0])
+    tau_fast, tau_slow, fast_frac = MPA_RECOVERY_PARAMS.get(sport, MPA_RECOVERY_PARAMS[0])
     slow_frac = 1.0 - fast_frac
 
     for i in range(n):

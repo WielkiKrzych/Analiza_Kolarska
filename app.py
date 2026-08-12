@@ -21,87 +21,10 @@ from modules.domain import SessionType, classify_session_type, classify_ramp_tes
 
 # --- SERVICES IMPORTS ---
 from services import calculate_header_metrics, prepare_session_record, prepare_sticky_header_data
+from modules.ui.tab_config import TabRegistry, render_tab_content
 
 # --- CONSTANTS ---
 MIN_POWER_SAMPLES_FOR_RAMP = 300
-
-
-# --- TAB REGISTRY (OCP) ---
-class TabRegistry:
-    """Registry for UI tabs to support Open/Closed Principle."""
-
-    _tabs = {
-        "report": ("modules.ui.report", "render_report_tab"),
-        "power": ("modules.ui.power", "render_power_tab"),
-        "biomech": ("modules.ui.biomech", "render_biomech_tab"),
-        "model": ("modules.ui.model", "render_model_tab"),
-        "hrv": ("modules.ui.hrv", "render_hrv_tab"),
-        "smo2": ("modules.ui.smo2", "render_smo2_tab"),
-        "hemo": ("modules.ui.hemo", "render_hemo_tab"),
-        "vent": ("modules.ui.vent", "render_vent_tab"),
-        "thermal": ("modules.ui.thermal", "render_thermal_tab"),
-        "nutrition": ("modules.ui.nutrition", "render_nutrition_tab"),
-        "limiters": ("modules.ui.limiters", "render_limiters_tab"),
-        "thresholds": ("modules.ui.threshold_analysis_ui", "render_threshold_analysis_tab"),
-        "history": ("modules.ui.trends_history", "render_trends_history_tab"),
-        "community": ("modules.ui.community", "render_community_tab"),
-        "import": ("modules.ui.history_import_ui", "render_history_import_tab"),
-        "heart_rate": ("modules.ui.heart_rate", "render_hr_tab"),
-        "summary": ("modules.ui.summary", "render_summary_tab"),
-        "drift_maps": ("modules.ui.drift_maps_ui", "render_drift_maps_tab"),
-        # --- Cycling features migrated from Tri_Dashboard ---
-        "tte": ("modules.ui.tte_ui", "render_tte_tab"),
-        "race_predictor": ("modules.ui.race_predictor_ui", "render_race_predictor_tab"),
-        "training_distribution": (
-            "modules.ui.training_distribution_ui",
-            "render_training_distribution_tab",
-        ),
-        "durability": ("modules.ui.durability_ui", "render_durability_tab"),
-        "w_prime_reconstitution": (
-            "modules.ui.w_prime_reconstitution_ui",
-            "render_w_prime_reconstitution_tab",
-        ),
-        "heat_strain": ("modules.ui.heat_strain_ui", "render_heat_strain_tab"),
-        # --- Cycling analytics migrated from Tri_Dashboard (Phase 5) ---
-        "mpa": ("modules.ui.mpa_ui", "render_mpa_tab"),
-        "vlamax": ("modules.ui.vlamax_ui", "render_vlamax_tab"),
-        "aerobic_efficiency": (
-            "modules.ui.aerobic_efficiency_ui",
-            "render_aerobic_efficiency_tab",
-        ),
-        "training_impact": ("modules.ui.training_impact_ui", "render_training_impact_tab"),
-        "banister": ("modules.ui.banister_ui", "render_banister_tab"),
-        "periodization": ("modules.ui.periodization_ui", "render_periodization_tab"),
-        # --- Longitudinal / whole-athlete analysis ---
-        "load": ("modules.ui.training_load_ui", "render_training_load_tab"),
-        "compare": ("modules.ui.compare", "render_comparison_tab"),
-        "alerts": ("modules.ui.alerts", "render_alerts_tab"),
-        "smo2_thresholds": ("modules.ui.smo2_thresholds", "render_smo2_thresholds_tab"),
-        "intervals": ("modules.ui.intervals_ui", "render_intervals_tab"),
-        "power_trends": ("modules.ui.power_trends_ui", "render_power_trends_tab"),
-    }
-
-    @classmethod
-    def render(cls, tab_name, *args, **kwargs):
-        """Dynamic dispatcher for tab rendering (Lazy loading)."""
-        if tab_name not in cls._tabs:
-            st.error(f"Unknown tab: {tab_name}")
-            return
-
-        module_path, func_name = cls._tabs[tab_name]
-        try:
-            import importlib
-
-            module = importlib.import_module(module_path)
-            func = getattr(module, func_name)
-            return func(*args, **kwargs)
-        except Exception as e:
-            st.error(f"Error loading tab {tab_name}: {e}")
-
-
-def render_tab_content(tab_name, *args, **kwargs):
-    """Facade for TabRegistry."""
-    return TabRegistry.render(tab_name, *args, **kwargs)
 
 
 # --- INIT ---
@@ -282,7 +205,7 @@ if uploaded_file is not None:
             for r in _history
         ]
         alert_report = analyze_session_alerts(df_plot, metrics, session_history=_session_history)
-    except Exception as e:
+    except (ImportError, ValueError, KeyError, TypeError) as e:
         logger.warning(f"Alert engine failed: {e}")
         from modules.calculations.alert_engine import AlertReport
 
@@ -473,7 +396,7 @@ if uploaded_file is not None:
 
     with tab_physiology:
         UIComponents.show_breadcrumb("🫀 Physiology")
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
+        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
             [
                 "💓 HRV",
                 "🩸 SmO2",
@@ -482,6 +405,7 @@ if uploaded_file is not None:
                 "🔥 Heat Strain",
                 "🚨 Alerts",
                 "🩸 Progi SmO2",
+                "🩸 Progi SmO2 (manual)",
             ]
         )
         with t1:
@@ -511,6 +435,14 @@ if uploaded_file is not None:
         with t7:
             render_tab_content(
                 "smo2_thresholds",
+                df_plot,
+                training_notes,
+                uploaded_file.name,
+                cp_input,
+            )
+        with t8:
+            render_tab_content(
+                "smo2_manual",
                 df_plot,
                 training_notes,
                 uploaded_file.name,

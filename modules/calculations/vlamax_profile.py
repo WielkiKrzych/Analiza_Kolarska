@@ -31,18 +31,25 @@ class VLamaxProfile:
     timestamp: Optional[str] = None
 
 
-_DURATIONS_SEC = [5, 15, 30, 60, 120, 240, 480, 960, 1920]
-_DURATION_LABELS = {
-    5: "5s",
-    15: "15s",
-    30: "30s",
-    60: "1min",
-    120: "2min",
-    240: "4min",
-    480: "8min",
-    960: "16min",
-    1920: "32min",
-}
+@dataclass(frozen=True)
+class DurationPoint:
+    """One point of the power-duration curve used for profiling."""
+
+    duration_sec: int
+    label: str
+
+
+DURATION_POINTS: List[DurationPoint] = [
+    DurationPoint(duration_sec=5, label="5s"),
+    DurationPoint(duration_sec=15, label="15s"),
+    DurationPoint(duration_sec=30, label="30s"),
+    DurationPoint(duration_sec=60, label="1min"),
+    DurationPoint(duration_sec=120, label="2min"),
+    DurationPoint(duration_sec=240, label="4min"),
+    DurationPoint(duration_sec=480, label="8min"),
+    DurationPoint(duration_sec=960, label="16min"),
+    DurationPoint(duration_sec=1920, label="32min"),
+]
 
 
 def _classify_rider(vlamax: float) -> str:
@@ -84,11 +91,11 @@ def build_vlamax_profile(
 
     aerobic_pct_dict: Dict[str, float] = {}
     if vo2max and vo2max > 0:
-        for dur in _DURATIONS_SEC:
-            if dur in pdc:
+        for point in DURATION_POINTS:
+            if point.duration_sec in pdc:
                 contrib = calculate_aerobic_contribution(pdc, vo2max, weight)
                 if contrib is not None:
-                    aerobic_pct_dict[_DURATION_LABELS[dur]] = round(contrib * 100, 1)
+                    aerobic_pct_dict[point.label] = round(contrib * 100, 1)
 
     return VLamaxProfile(
         vlamax=round(vlamax, 3),

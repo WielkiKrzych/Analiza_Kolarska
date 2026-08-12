@@ -85,12 +85,15 @@ from .stamina import (
     get_stamina_interpretation,
     get_vlamax_interpretation,
     calculate_aerobic_contribution,
-    calculate_durability_index,
-    get_durability_interpretation,
 )
 
+# Durability: advanced versions (method param, seasonal analysis, detailed
+# interpretation, recommendations) live in durability.py per migration plan
+# Phase 1.3 — do not fall back to the simplified stamina.py variants.
 from .durability import (
+    calculate_durability_index,
     calculate_durability_by_season,
+    get_durability_interpretation,
     get_durability_recommendations,
 )
 

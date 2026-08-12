@@ -113,13 +113,10 @@ def calculate_w_prime_biexp(
     watts = np.asarray(watts, dtype=np.float64)
     time = np.asarray(time, dtype=np.float64)
 
-    # Sport-specific bi-exponential parameters
-    _BIEXP_PARAMS = {
-        0: (50.0, 400.0, 0.65),  # cycling:  (tau_fast, tau_slow, A_fast)
-        1: (30.0, 300.0, 0.70),  # running
-        2: (20.0, 200.0, 0.75),  # swimming
-    }
-    tau_f, tau_s, a_f = _BIEXP_PARAMS.get(sport, _BIEXP_PARAMS[0])
+    # Sport-specific bi-exponential parameters (single source of truth)
+    from .sport_constants import BIEXP_RECOVERY_PARAMS
+
+    tau_f, tau_s, a_f = BIEXP_RECOVERY_PARAMS.get(sport, BIEXP_RECOVERY_PARAMS[0])
     a_s = 1.0 - a_f  # slow amplitude fraction
 
     n = len(watts)

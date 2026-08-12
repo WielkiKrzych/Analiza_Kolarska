@@ -99,6 +99,9 @@ echo "  -> custom icon applied"
 touch "$APP_DIR"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 [ -x "$LSREGISTER" ] && "$LSREGISTER" -f "$APP_DIR" >/dev/null 2>&1 || true
+# Restart the Dock so it re-reads the refreshed icon cache. This briefly
+# flashes the Dock (all icons disappear for ~1s) but is required for the new
+# custom icon to show up without logging out. Safe to skip on headless builds.
 killall Dock 2>/dev/null || true
 
 rm -rf "$WORK"
