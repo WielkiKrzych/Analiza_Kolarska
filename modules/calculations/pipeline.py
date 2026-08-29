@@ -16,7 +16,7 @@ NO OPTIMIZATION - explicit, readable, debuggable.
 import logging
 import pandas as pd
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +31,12 @@ from models.results import (
     ConflictSeverity,
     RampTestResult,
 )
-from modules.calculations.threshold_types import StepTestRange, StepVTResult, StepSmO2Result
+from modules.calculations.threshold_types import StepTestRange, StepVTResult, StepSmO2Result, TransitionZone
 from modules.calculations.step_detection import detect_step_test_range
 from modules.calculations.ventilatory import detect_vt_from_steps
 from modules.calculations.metabolic import detect_smo2_from_steps
 from modules.calculations.power import calculate_power_duration_curve
+from modules.calculations.vt_cpet import detect_vt_cpet
 
 
 # ============================================================
@@ -765,3 +766,87 @@ __all__ = [
     "IndependentAnalysisResults",
     "IntegrationResult",
 ]
+
+
+def _hash_df(df: pd.DataFrame) -> str:
+    """Hash a DataFrame for Streamlit cache key generation."""
+    return str(pd.util.hash_pandas_object(df).sum())
+
+
+def _vt_result_from_cpet(
+    df: pd.DataFrame,
+    step_range: StepTestRange,
+    ve_column: str,
+    power_column: str,
+    time_column: str,
+) -> Optional[Tuple[StepVTResult, dict]]:
+    """Build a StepVTResult from the CPET detector.
+
+    The pipeline used to run its own `detect_vt_from_steps` scan, which meant the
+    report and the thresholds tab could disagree on VT2 by 15+ W on the same file.
+    There is one detector now; this only reshapes its output into the zone type the
+    rest of the pipeline consumes.
+    """
+    cpet = detect_vt_cpet(
+        df,
+        step_range=step_range,
+        power_column=power_column,
+        ve_column=ve_column,
+        time_column=time_column,
+    )
+
+    result = StepVTResult()
+    for prefix, attr in (("vt1", "vt1_zone"), ("vt2", "vt2_zone")):
+        watts = cpet.get(f"{prefix}_watts")
+        if watts is None:
+            continue
+        low = cpet.get(f"{prefix}_range_low") or watts
+        high = cpet.get(f"{prefix}_range_high") or watts
+        hr = cpet.get(f"{prefix}_hr")
+        ve = cpet.get(f"{prefix}_ve")
+        br = cpet.get(f"{prefix}_br")
+        setattr(
+            result,
+            attr,
+            TransitionZone(
+                # Centred on the CPET point so midpoint_watts == the number the UI shows.
+                range_watts=(watts - (watts - low), watts + (high - watts)),
+                range_hr=(hr, hr) if hr else None,
+                midpoint_ve=ve,
+                midpoint_br=br,
+                confidence=cpet.get(f"{prefix}_confidence", 0.0) or 0.0,
+                method=cpet.get("method", "ve_only_4point_cpet"),
+                detection_sources=["VE"],
+            ),
+        )
+        setattr(result, f"{prefix}_watts", float(watts))
+        setattr(result, f"{prefix}_br", br)
+
+    if result.vt1_zone is None and result.vt2_zone is None:
+        return None
+
+    result.notes.extend(cpet.get("analysis_notes", []))
+    return result, cpet
+
+
+def _smo2_sample_at(
+    df: pd.DataFrame,
+    watts: float,
+    prefix: str,
+    smo2_column: str,
+    power_column: str,
+    hr_column: str,
+) -> Dict[str, Any]:
+    """HR and SmO2 read at the sample closest to `watts`, so the report card is whole."""
+    if power_column not in df.columns:
+        return {}
+    near = df.iloc[(df[power_column] - watts).abs().argsort()[:1]]
+    if near.empty:
+        return {}
+    row = near.iloc[0]
+    out: Dict[str, Any] = {}
+    if hr_column in df.columns and pd.notna(row[hr_column]):
+        out[f"{prefix}_hr"] = int(row[hr_column])
+    if smo2_column in df.columns and pd.notna(row[smo2_column]):
+        out[f"{prefix}_smo2"] = round(float(row[smo2_column]), 1)
+    return out

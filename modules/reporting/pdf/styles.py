@@ -12,8 +12,66 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import os
+import re
 from dataclasses import dataclass
 from typing import Dict
+
+
+# Colour emoji / pictographs the PDF font (DejaVuSans) can't render — they show
+# up as tofu boxes. Strip them from any text placed into the PDF. Plain symbols
+# actually present in DejaVuSans (✓ ✗ ⚠ → ● ★ ☆ ♥ • ~) are intentionally KEPT;
+# only true colour-emoji (incl. the specific BMP ones used as icons) are removed.
+_PDF_EMOJI_RE = re.compile(
+    "[\U0001f000-\U0001faff]"  # main emoji & pictograph blocks
+    "|️"  # emoji variation selector
+    "|[⚖⁉‼❓❔❕❗❌❤⛔⚡⭐]"
+)
+
+
+def strip_emoji(text) -> str:
+    """Remove colour-emoji/pictographs and tidy whitespace for PDF text."""
+    return _PDF_EMOJI_RE.sub("", str(text)).strip()
+
+
+# ============================================================================
+# COMPACT MODE (shared flag)
+# ----------------------------------------------------------------------------
+# When enabled, page builders skip educational/explanatory filler (theory
+# boxes, "Dlaczego to ma znaczenie?", FAKT/INTERPRETACJA/AKCJA) and the
+# per-section training-decision blocks, so the consolidated training plan on
+# the executive-summary page becomes the single source of prescription.
+# ============================================================================
+
+_COMPACT_MODE = False
+
+
+def set_compact_mode(value: bool) -> None:
+    """Toggle report compact mode (module-global, read by all page builders)."""
+    global _COMPACT_MODE
+    _COMPACT_MODE = bool(value)
+
+
+def is_compact() -> bool:
+    """True when the report is being built in compact mode."""
+    return _COMPACT_MODE
+
+
+# Section numbers are renumbered per build: compact mode drops whole sections,
+# and leaving the source numbers in place produced a contents page reading
+# "2.1, 2.4, 2.6". Page builders keep their canonical key in the source and ask
+# for the display number here.
+_SECTION_NUMBERS: Dict[str, str] = {}
+
+
+def set_section_numbers(mapping: Dict[str, str]) -> None:
+    """Install the canonical-key -> displayed-number map for this build."""
+    global _SECTION_NUMBERS
+    _SECTION_NUMBERS = dict(mapping)
+
+
+def section_no(key: str) -> str:
+    """Displayed number for a section, falling back to its canonical key."""
+    return _SECTION_NUMBERS.get(key, key)
 
 
 # ============================================================================
