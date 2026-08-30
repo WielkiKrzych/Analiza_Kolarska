@@ -19,6 +19,7 @@ class TransitionZone:
     range_watts: Tuple[float, float]                    # (min, max) power range
     range_hr: Optional[Tuple[float, float]] = None      # (min, max) HR range
     midpoint_ve: Optional[float] = None                 # Midpoint VE (L/min)
+    midpoint_br: Optional[float] = None                 # Midpoint breath rate (br/min)
     range_ve: Optional[List[float]] = None              # (min, max) VE range
     confidence: float = 0.0                             # 0.0-1.0 detection confidence
     stability_score: float = 0.0                        # 0.0-1.0 temporal stability

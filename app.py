@@ -212,8 +212,8 @@ if uploaded_file is not None:
         alert_report = AlertReport()
 
     # Layout Tabs
-    tab_overview, tab_performance, tab_intelligence, tab_physiology, tab_cycling = st.tabs(
-        ["📊 Overview", "⚡ Performance", "🧠 Intelligence", "🫀 Physiology", "🚴 Cycling"]
+    tab_overview, tab_performance, tab_intelligence, tab_physiology, tab_cycling, tab_td, tab_intervals_icu = st.tabs(
+        ["📊 Overview", "⚡ Performance", "🧠 Intelligence", "🫀 Physiology", "🚴 Cycling", "🔬 Fizjologia (TD)", "🌐 Intervals.icu"]
     )
 
     with tab_overview:
@@ -473,6 +473,41 @@ if uploaded_file is not None:
             render_tab_content("banister")
         with t6:
             render_tab_content("periodization")
+
+    with tab_td:
+        UIComponents.show_breadcrumb("🔬 Fizjologia (TD)")
+        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs([
+            "📉 DFA Longitudinal",
+            "🩸 SmO2 Longitudinal",
+            "🛠️ Manual Thresholds",
+            "🫁 Vent Thresholds (CPET)",
+            "💓 HRV Readiness",
+            "😴 Sleep Recovery",
+            "🍎 Fueling",
+            "🤖 AI Coach",
+        ])
+        with t1:
+            render_tab_content("dfa_longitudinal", df_plot)
+        with t2:
+            render_tab_content("smo2_longitudinal", df_plot, cp_input)
+        with t3:
+            render_tab_content("manual_thresholds", df_plot, training_notes, uploaded_file.name, cp_input, params.get("hr_max"))
+        with t4:
+            render_tab_content("vent_thresholds", df_plot, training_notes, uploaded_file.name, cp_input)
+        with t5:
+            render_tab_content("hrv_readiness", df_plot)
+        with t6:
+            render_tab_content("sleep_recovery")
+        with t7:
+            render_tab_content("fueling", df_plot_resampled, cp_input)
+        with t8:
+            render_tab_content("ai_coach", df_plot_resampled, cp_input)
+
+    with tab_intervals_icu:
+        UIComponents.show_breadcrumb("🌐 Intervals.icu")
+        from modules.ui.intervals_icu_ui import render_intervals_icu_section
+
+        render_intervals_icu_section()
 
 else:
     st.sidebar.info("Wgraj plik.")

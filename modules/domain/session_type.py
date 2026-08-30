@@ -363,3 +363,50 @@ def classify_session_type(
             return SessionType.TRAINING
     
     return SessionType.UNKNOWN
+
+
+def _is_linear_ramp(power_arr: np.ndarray, min_r2: float = 0.95, min_gain_w: float = 50.0) -> bool:
+    """Return True if power follows a strongly linear, clearly rising profile.
+
+    Used to recognise continuous (non-stepped) ramp protocols. Kept strict
+    (high R², meaningful net gain) so that ordinary training rides — which have
+    high power variance and therefore low linear R² — are not misclassified.
+    """
+    n = len(power_arr)
+    if n < 60:
+        return False
+    x = np.arange(n, dtype=float)
+    window = min(30, max(1, n // 10))
+    y = pd.Series(power_arr).rolling(window=window, center=True, min_periods=1).mean().values
+    slope, intercept = np.polyfit(x, y, 1)
+    if slope <= 0:
+        return False
+    fit = slope * x + intercept
+    ss_res = float(np.sum((y - fit) ** 2))
+    ss_tot = float(np.sum((y - np.mean(y)) ** 2))
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    gain = float(fit[-1] - fit[0])
+    return r2 >= min_r2 and gain >= min_gain_w
+
+
+def _trim_to_ramp_body(steps: List[dict]) -> Tuple[List[dict], int]:
+    """Strip the warm-up hold and the cool-down from a detected step list.
+
+    Everything after the peak-power step is cool-down. Leading steps that barely
+    gain power over their successor are a warm-up hold, not ramp steps.
+
+    Returns the trimmed steps and the sample index where the ramp body ends
+    (used to keep the cool-down out of recovery-phase detection).
+    """
+    if not steps:
+        return steps, 0
+
+    peak_idx = max(range(len(steps)), key=lambda i: steps[i]["mean_power"])
+    body = steps[: peak_idx + 1]
+    body_end = body[-1]["end"]
+
+    WARMUP_GAIN_W = 10.0
+    while len(body) > 3 and body[1]["mean_power"] - body[0]["mean_power"] < WARMUP_GAIN_W:
+        body = body[1:]
+
+    return body, body_end

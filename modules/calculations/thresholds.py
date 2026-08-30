@@ -279,3 +279,114 @@ def calculate_training_zones_from_thresholds(
             "Z6_Anaerobic": "Beztlenowa",
         },
     }
+
+
+# --- Ported from Tri_Dashboard (ws6): RAMP-based FTP / SmO₂ breakpoint helpers ---
+def estimate_ftp_from_ramp(df_steps: pd.DataFrame, map_ratio: float = 0.75) -> dict:
+    """
+    Estimate FTP from a completed ramp/step test via the MAP model.
+
+    Model: MAP (maximal aerobic power) = mean power of the last completed step;
+    FTP = map_ratio * MAP. The 0.75 coefficient is the standard ramp-test ratio
+    (Zwift/Coggan ramp protocol) and is the only free parameter.
+
+    A ramp test cannot measure FTP directly: FTP is a ~60 min construct and the
+    test lasts minutes. The result is an estimate by construction and is labelled
+    as such.
+
+    Args:
+        df_steps: Per-step table from detect_vt_cpet() (needs a 'power' column)
+        map_ratio: MAP → FTP coefficient
+
+    Returns:
+        {"ftp_watts", "map_watts", "map_ratio", "model", "is_estimate"};
+        ftp_watts and map_watts are None when there are no steps.
+    """
+    if df_steps is None or len(df_steps) == 0 or "power" not in df_steps.columns:
+        return {
+            "ftp_watts": None,
+            "map_watts": None,
+            "map_ratio": map_ratio,
+            "model": "MAP × ratio (ramp)",
+            "is_estimate": True,
+        }
+
+    map_watts = int(round(df_steps["power"].max()))
+    return {
+        "ftp_watts": int(round(map_watts * map_ratio)),
+        "map_watts": map_watts,
+        "map_ratio": map_ratio,
+        "model": f"FTP = {map_ratio:.0%} × MAP (ostatni ukończony stopień)",
+        "is_estimate": True,
+    }
+
+
+# SmO2 BP2 is searched in the top quarter of the ramp, expressed relative to MAP
+# rather than in absolute watts: an absolute window is athlete-specific.
+SMO2_BP2_SEARCH_LOW_MAP_RATIO = 0.75
+SMO2_BP2_SEARCH_HIGH_MAP_RATIO = 1.00
+SMO2_BP1_SEARCH_LOW_MAP_RATIO = 0.40
+SMO2_BP1_SEARCH_HIGH_MAP_RATIO = 0.75
+
+
+def detect_smo2_ramp_breakpoints(
+    df: pd.DataFrame,
+    map_watts: float,
+    smo2_column: str = "smo2",
+    power_column: str = "watts",
+) -> dict:
+    """
+    SmO2 BP1 and BP2 for a ramp report, each from the method that measures it best.
+
+    BP1 comes from the 2-segment (double-linear) fit, which searches the whole
+    ramp with no imposed window. BP2 comes from the 3-segment fit, whose third
+    segment is what makes a second breakpoint identifiable at all.
+    """
+    from .smo2_breakpoints import (
+        detect_smo2_breakpoints_double_linear,
+        detect_smo2_breakpoints_segmented,
+    )
+
+    out = {
+        "bp1_watts": None,
+        "bp2_watts": None,
+        "bp1_r_squared": None,
+        "bp2_r_squared": None,
+        "notes": [],
+    }
+    if smo2_column not in df.columns or df[smo2_column].notna().sum() < 30:
+        out["notes"].append("Brak danych SmO₂ — progi mięśniowe pominięte.")
+        return out
+
+    two = detect_smo2_breakpoints_double_linear(df, smo2_column, power_column)
+    if two.is_valid and two.bp1_power is not None:
+        out["bp1_watts"] = int(round(two.bp1_power))
+        out["bp1_r_squared"] = two.r_squared
+
+    three = detect_smo2_breakpoints_segmented(
+        df,
+        smo2_column,
+        power_column,
+        bp1_range=(
+            SMO2_BP1_SEARCH_LOW_MAP_RATIO * map_watts,
+            SMO2_BP1_SEARCH_HIGH_MAP_RATIO * map_watts,
+        ),
+        bp2_range=(
+            SMO2_BP2_SEARCH_LOW_MAP_RATIO * map_watts,
+            SMO2_BP2_SEARCH_HIGH_MAP_RATIO * map_watts,
+        ),
+    )
+    if three.is_valid and three.bp2_power is not None:
+        out["bp2_watts"] = int(round(three.bp2_power))
+        out["bp2_r_squared"] = three.r_squared
+
+        if out["bp1_watts"] is not None and three.bp1_power is not None:
+            spread = abs(three.bp1_power - out["bp1_watts"])
+            if spread > 30:
+                out["notes"].append(
+                    f"⚠️ BP1 zależy od modelu: 2-segmentowy {out['bp1_watts']}W, "
+                    f"3-segmentowy {three.bp1_power:.0f}W (różnica {spread:.0f}W). "
+                    "Raportowana jest wartość 2-segmentowa."
+                )
+
+    return out

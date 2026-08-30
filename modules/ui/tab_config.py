@@ -66,6 +66,15 @@ class TabRegistry:
         ),
         "intervals": ("modules.ui.intervals_ui", "render_intervals_tab"),
         "power_trends": ("modules.ui.power_trends_ui", "render_power_trends_tab"),
+        # Pported cycling physiology tabs (ws6)
+        "dfa_longitudinal": ("modules.ui.dfa_longitudinal_ui", "render_dfa_longitudinal_tab"),
+        "fueling": ("modules.ui.fueling_ui", "render_fueling_tab"),
+        "hrv_readiness": ("modules.ui.hrv_readiness_ui", "render_hrv_readiness_tab"),
+        "sleep_recovery": ("modules.ui.sleep_recovery_ui", "render_sleep_recovery_tab"),
+        "smo2_longitudinal": ("modules.ui.smo2_longitudinal_ui", "render_smo2_longitudinal_tab"),
+        "manual_thresholds": ("modules.ui.manual_thresholds", "render_manual_thresholds_tab"),
+        "vent_thresholds": ("modules.ui.vent_thresholds", "render_vent_thresholds_tab"),
+        "ai_coach": ("modules.ui.ai_coach", "render_ai_coach_tab"),
     }
 
     @classmethod

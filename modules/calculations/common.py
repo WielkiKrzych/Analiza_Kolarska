@@ -2,7 +2,8 @@
 Moduł pomocniczy - wspólne funkcje i stałe dla pakietu calculations.
 """
 
-from typing import Union, Any
+from typing import Any, Dict, Union
+
 import pandas as pd
 
 # Stałe używane w wielu modułach (przeniesione z constants.py dla izolacji)
@@ -66,3 +67,45 @@ def ensure_pandas(df: Union[pd.DataFrame, Any]) -> pd.DataFrame:
     if isinstance(df, dict):
         return pd.DataFrame(df)
     return pd.DataFrame(df)
+
+# --- ported from Tri_Dashboard for cycling VT (WS1) ---
+VT2_MAX_PCT_PMAX = 0.95  # VT2 should not exceed 95% of Pmax
+
+def validate_threshold_vs_pmax(
+    threshold_watts: float,
+    pmax_watts: float,
+    threshold_name: str = "VT2",
+    max_ratio: float = VT2_MAX_PCT_PMAX,
+) -> Dict:
+    """
+    Validate that a threshold is physiologically plausible relative to Pmax.
+
+    [Issue #2] Prevents detection of thresholds that exceed physiological limits.
+
+    Args:
+        threshold_watts: Detected threshold value
+        pmax_watts: Maximum power achieved
+        threshold_name: Name for logging (VT1, VT2, etc.)
+        max_ratio: Maximum allowed ratio (default 0.95 = 95% of Pmax)
+
+    Returns:
+        dict with 'is_valid', 'confidence_penalty', 'message'
+    """
+    if pmax_watts <= 0 or threshold_watts is None:
+        return {"is_valid": True, "confidence_penalty": 0.0, "message": ""}
+
+    ratio = threshold_watts / pmax_watts
+
+    if ratio > max_ratio:
+        return {
+            "is_valid": False,
+            "confidence_penalty": 0.3,
+            "message": (
+                f"⚠️ {threshold_name} ({threshold_watts}W) > {max_ratio * 100:.0f}% of Pmax "
+                f"({pmax_watts}W) → UNRELIABLE, confidence -0.3"
+            ),
+        }
+
+    return {"is_valid": True, "confidence_penalty": 0.0, "message": ""}
+
+

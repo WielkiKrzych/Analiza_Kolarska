@@ -8,7 +8,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit">
-  <img src="https://img.shields.io/badge/Testy-253%20passed-3FB950?style=for-the-badge&logo=pytest&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/Testy-299%20passed-3FB950?style=for-the-badge&logo=pytest&logoColor=white" alt="Tests">
   <img src="https://img.shields.io/badge/Licencja-MIT-8957E5?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/macOS-Dock%20App-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS app">
 </p>
@@ -49,7 +49,7 @@ na rowerze. Wczytujesz plik z treningu lub testu (CSV / TXT), a aplikacja:
 
 ## 🗺️ Mapa zakładek
 
-Interfejs dzieli się na **pięć grup**:
+Interfejs dzieli się na **siedem grup**:
 
 ### 📊 Overview
 | Zakładka | Zawartość |
@@ -97,6 +97,28 @@ Interfejs dzieli się na **pięć grup**:
 | 🗓️ Banister | Model fitness–fatigue, prognoza formy, okna szczytu |
 | 📅 Periodization | Bloki treningowe, plan tygodniowy, PMC (CTL/ATL/TSB) |
 
+### 🔬 Fizjologia (TD)
+| Zakładka | Opis |
+|---|---|
+| 📉 DFA Longitudinal | DFA-α1 w czasie, dekompensacja autonomiczna |
+| 🩸 SmO₂ Longitudinal | Trend nasycenia mięśniowego w czasie |
+| 🛠️ Manual Thresholds | Ręczne ustawienie progów wentylacyjnych / mięśniowych |
+| 🫁 Vent Thresholds (CPET) | Analiza progów z danych CPET |
+| 💓 HRV Readiness | Gotowość na podstawie HRV |
+| 😴 Sleep Recovery | Regeneracja i sen |
+| 🍎 Fueling | Strategia żywieniowa wysiłkowa |
+| 🤖 AI Coach | Rekomendacje treningowe wspierane AI |
+
+### 🌐 Intervals.icu
+| Zakładka | Opis |
+|---|---|
+| 🏥 Wellness → Wydajność | Korelacja wellness i wydajności (API) |
+| 📈 Progresja Mocy | Krzywe mocy w czasie (API) |
+| 📋 Compliance | Zgodność z planem treningowym (API) |
+| 🔍 Interwały | Progresja interwałów między aktywnościami (API) |
+| 🏁 Race Readiness | Gotowość startowa (API) |
+| 🌡️ Heat Adapt | Adaptacja do ciepła (API) |
+
 ---
 
 ## 🚀 Szybki start
@@ -118,6 +140,10 @@ streamlit run app.py
 Aplikacja wystartuje na `http://localhost:8501` (lub `8502`, jeśli uruchamiasz ją z aplikacji Dock).
 
 **Wymagania:** Python 3.10+, zależności z `pyproject.toml`.
+
+**Konfiguracja (`.env`):** skopiuj `.env.example` do `.env`. Zakładka **Intervals.icu**
+wymaga `INTERVALS_ICU_API_KEY` oraz `INTERVALS_ICU_ATHLETE_ID`. Raporty PDF zapisują
+się do katalogu z `REPORTS_DIR` (domyślnie `reports/ramp_tests`).
 
 ---
 
@@ -192,7 +218,7 @@ Analiza_Kolarska/
 │
 ├── services/                  🔄 Orkiestracja analizy sesji
 ├── models/ · signals/         📋 Modele danych · przetwarzanie sygnałów
-├── tests/                     🧪 253 testy
+├── tests/                     🧪 299 testy
 └── data/                      💾 Baza SQLite
 ```
 
@@ -206,7 +232,7 @@ Analiza_Kolarska/
 | **Obliczenia** | SciPy · Numba (JIT) · Polars · NeuroKit2 |
 | **Wizualizacja** | Plotly (interaktywne, box-select) · Matplotlib · Kaleido |
 | **Dane** | SQLite (sesje + profile zawodnika) |
-| **Jakość** | Pytest (253) · Ruff · Black |
+| **Jakość** | Pytest (299) · Ruff · Black |
 
 ---
 
@@ -227,12 +253,36 @@ zakres wartości, użytą metodę i wizualny wskaźnik wiarygodności.
 
 ```bash
 python -m pytest tests/ -q
-# ── 253 passed ──
+# ── 299 passed ──
 ```
 
 ---
 
 ## 🔧 Changelog
+
+### 🆕 v0.7.0 — Port funkcji kolarskich z Tri_Dashboard (plan P0–P5)
+
+Realizacja planu portowania `PLAN_Portowanie_Kolarstwa.md` — kompletny przenos
+obliczeń i interfejsu z *Tri_Dashboard* do *Analiza Kolarska*:
+
+**Silnik obliczeniowy (WS1–WS3)**
+- Moduły mocy, SmO₂, termiki, VLaMax, Banistera, periodyzacji, DFA/HRV/sleep/fueling w `modules/calculations/`.
+- Typy domenowe: `session_type`, `threshold_types`, `data_quality`, `threshold_crosscheck`.
+- Rura analizy sesji (`pipeline.py`) i wspólny `common.py`.
+- Backup SQLite (`backup.py`) + walidacja jakości (`validation.py`, klucze `RAMP_*` w `Config`).
+
+**Interfejs (WS6 + WS4)**
+- Nowa grupa **🔬 Fizjologia (TD)** — 8 zakładek (DFA Longitudinal, SmO₂ Longitudinal, Manual Thresholds, Vent Thresholds CPET, HRV Readiness, Sleep Recovery, Fueling, AI Coach).
+- Przywrócona integracja **🌐 Intervals.icu** — nowy pakiet `modules/intervals_icu/` (client API + compliance, heat_adaptation, interval_progression, power_progression, race_readiness, wellness_performance) i zakładka z 6 widokami.
+
+**Raporty PDF (WS5)**
+- Uzupełnione brakujące moduły `modules/reporting/` (generator raportów rampowych, karty, metaboliczne, cardio/vent, HRV/thermal, SmO₂).
+- Wyjście raportów sterowane przez `REPORTS_DIR` (env).
+
+**Konfiguracja**
+- Dodano `.env.example` (klucze `INTERVALS_ICU_*`, `OPENAI_API_KEY`, `REPORTS_DIR`).
+
+**Testy:** 299 passed, 0 regresji (o +46 vs v0.6.0).
 
 ### 🆕 v0.6.0 — Uspójnienie z Tri_Dashboard, poprawki UI i aplikacja Dock
 
@@ -250,7 +300,7 @@ python -m pytest tests/ -q
 
 **Aplikacja na Dock (macOS)** — `build_app.sh` (aplet AppleScript + własna ikona `NSWorkspace`), `launcher.sh`, `make_icon.py`.
 
-> ℹ️ Integracja **intervals.icu** została świadomie usunięta z tej wersji.
+> ℹ️ Integracja **intervals.icu** została świadomie usunięta w v0.6.0 (przywrócona w v0.7.0).
 
 **Testy:** 253 passed, 0 regresji.
 
