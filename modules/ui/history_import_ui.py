@@ -11,7 +11,7 @@ from modules.history_import import (
     get_available_files, 
     TRAINING_FOLDER
 )
-from modules.db import SessionStore
+from modules.cache_utils import get_session_store
 
 
 def render_history_import_tab(cp: float = 280):  # noqa: C901
@@ -22,7 +22,7 @@ def render_history_import_tab(cp: float = 280):  # noqa: C901
     """
     st.header("📂 Import Historycznych Treningów")
     
-    store = SessionStore()
+    store = get_session_store()
     current_count = store.get_session_count()
     
     st.info(f"""

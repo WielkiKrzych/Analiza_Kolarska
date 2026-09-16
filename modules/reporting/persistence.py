@@ -1154,6 +1154,15 @@ def load_ramp_test_report(file_path: Union[str, Path]) -> Dict:
         return json.load(f)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _has_git_tracked_files(directory: str) -> bool:
+    """git ls-files for the directory, cached so reruns don't spawn a process each time."""
+    result = subprocess.run(
+        ["git", "ls-files", directory], capture_output=True, text=True, check=False
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
 def check_git_tracking(directory: str = "reports/ramp_tests"):
     """
     Check if a directory contains any files tracked by git.
@@ -1166,13 +1175,7 @@ def check_git_tracking(directory: str = "reports/ramp_tests"):
         return
 
     try:
-        # Check if any files in the directory are tracked
-        # git ls-files returns output if files are tracked
-        result = subprocess.run(
-            ["git", "ls-files", directory], capture_output=True, text=True, check=False
-        )
-
-        if result.returncode == 0 and result.stdout.strip():
+        if _has_git_tracked_files(directory):
             # Tracked files found!
             st.error(
                 f"🚨 **SECURITY WARNING**: Folder `{directory}` zawiera pliki śledzone przez Git!\n\n"

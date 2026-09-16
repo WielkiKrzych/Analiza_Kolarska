@@ -79,8 +79,11 @@ def render_vent_thresholds_tab(  # noqa: C901
         Detekcja progów wentylacyjnych wymaga **testu stopniowanego (Ramp Test)** z liniowym wzrostem obciążenia.
         Dla normalnych treningów użyj zakładki **"🫁 Ventilation"** do analizy manualnej.
         """)
-        if not st.checkbox("⚠️ Wymuś analizę mimo błędów protokołu (wyniki mogą być niewiarygodne)"):
-            st.stop()
+        if not st.checkbox(
+            "⚠️ Wymuś analizę mimo błędów protokołu (wyniki mogą być niewiarygodne)",
+            key="vent_thresholds_force_analysis",
+        ):
+            return
     else:
         st.success("✅ Protokół Testu Stopniowanego: Poprawny (Liniowy Wzrost Obciążenia)")
 

@@ -203,7 +203,6 @@ def render_w_prime_reconstitution_tab(
         line_color="#4CAF50",
         annotation_text=f"CP ({cp_input} W)",
         annotation_position="top right",
-        yaxis="y",
     )
 
     fig2.update_layout(

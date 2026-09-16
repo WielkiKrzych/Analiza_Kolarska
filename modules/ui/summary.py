@@ -13,7 +13,7 @@ from scipy import stats
 import hashlib
 from typing import Optional
 from modules.config import Config
-from modules.calculations.thresholds import analyze_step_test
+from modules.ui.shared import cached_analyze_step_test
 from modules.calculations.smo2_advanced import detect_smo2_thresholds_moxy
 
 
@@ -194,36 +194,15 @@ def _build_training_timeline_chart(df_plot: pd.DataFrame) -> Optional[go.Figure]
     return fig
 
 
-def render_summary_tab(  # noqa: C901
-    df_plot: pd.DataFrame,
-    df_plot_resampled: pd.DataFrame,
-    metrics: dict,
-    training_notes,
-    uploaded_file_name: str,
-    cp_input: int,
-    w_prime_input: int,
-    rider_weight: float,
-    vt1_watts: int = 0,
-    vt2_watts: int = 0,
-    lt1_watts: int = 0,
-    lt2_watts: int = 0,
-):
-    """Renderowanie zakładki Podsumowanie z kluczowymi wykresami i metrykami."""
-    st.header("📊 Podsumowanie Treningu")
-    st.markdown("Wszystkie kluczowe wykresy i metryki w jednym miejscu.")
+def detect_session_thresholds(df_plot: pd.DataFrame, cp_input: int):
+    """VT (step test) and SmO2 (Moxy) thresholds shown in the Summary tab and its PDF export."""
+    df_plot = df_plot.set_axis(df_plot.columns.str.lower().str.strip(), axis=1)
+    hr_col = next(
+        (alias for alias in ["hr", "heartrate", "heart_rate", "bpm"] if alias in df_plot.columns),
+        None,
+    )
 
-    # Normalize columns
-    df_plot.columns = df_plot.columns.str.lower().str.strip()
-
-    # --- SHARED THRESHOLD DETECTION ---
-    # We perform detection once here to be used across multiple sections (5, 6, 7)
-    hr_col = None
-    for alias in ["hr", "heartrate", "heart_rate", "bpm"]:
-        if alias in df_plot.columns:
-            hr_col = alias
-            break
-
-    threshold_result = analyze_step_test(
+    threshold_result = cached_analyze_step_test(
         df_plot,
         power_column="watts",
         ve_column="tymeventilation" if "tymeventilation" in df_plot.columns else None,
@@ -248,6 +227,33 @@ def render_summary_tab(  # noqa: C901
             vt1_watts=threshold_result.vt1_watts,
             rcp_onset_watts=threshold_result.vt2_watts,
         )
+    return threshold_result, smo2_result
+
+
+def render_summary_tab(  # noqa: C901
+    df_plot: pd.DataFrame,
+    df_plot_resampled: pd.DataFrame,
+    metrics: dict,
+    training_notes,
+    uploaded_file_name: str,
+    cp_input: int,
+    w_prime_input: int,
+    rider_weight: float,
+    vt1_watts: int = 0,
+    vt2_watts: int = 0,
+    lt1_watts: int = 0,
+    lt2_watts: int = 0,
+):
+    """Renderowanie zakładki Podsumowanie z kluczowymi wykresami i metrykami."""
+    st.header("📊 Podsumowanie Treningu")
+    st.markdown("Wszystkie kluczowe wykresy i metryki w jednym miejscu.")
+
+    # Normalize columns
+    df_plot = df_plot.set_axis(df_plot.columns.str.lower().str.strip(), axis=1)
+
+    # --- SHARED THRESHOLD DETECTION ---
+    # We perform detection once here to be used across multiple sections (5, 6, 7)
+    threshold_result, smo2_result = detect_session_thresholds(df_plot, cp_input)
 
     # Use detected values if parameters are 0
     eff_vt1 = (

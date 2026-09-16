@@ -11,8 +11,12 @@ import streamlit as st
 from modules.calculations.column_aliases import normalize_columns, resolve_hr_column
 from modules.calculations.quality import check_step_test_protocol
 from modules.calculations.threshold_time import find_time_for_power
-from modules.calculations.thresholds import analyze_step_test
 from modules.calculations.vt_cpet import detect_vt_cpet
+from modules.ui.shared import cached_analyze_step_test
+
+
+def _set_state(key: str, value: Any) -> None:
+    st.session_state[key] = value
 
 
 def render_manual_thresholds_tab(  # noqa: C901
@@ -44,7 +48,7 @@ def render_manual_thresholds_tab(  # noqa: C901
     # Check for watts column before analysis
     if "watts" not in target_df.columns:
         st.error("Brak kolumny mocy ('watts') w danych. Upewnij się, że plik zawiera dane mocy.")
-        st.stop()
+        return
 
     # --- Quality Check: Protocol Compliance ---
     st.subheader("📋 Weryfikacja Protokołu")
@@ -62,8 +66,11 @@ def render_manual_thresholds_tab(  # noqa: C901
         Dla normalnych treningów użyj zakładki **"🫁 Ventilation"** do analizy manualnej.
         """)
 
-        if not st.checkbox("⚠️ Wymuś analizę mimo błędów protokołu (wyniki mogą być niewiarygodne)"):
-            st.stop()
+        if not st.checkbox(
+            "⚠️ Wymuś analizę mimo błędów protokołu (wyniki mogą być niewiarygodne)",
+            key="manual_thresholds_force_analysis",
+        ):
+            return
     else:
         st.success("✅ Protokół Testu Stopniowanego: Poprawny (Liniowy Wzrost Obciążenia)")
 
@@ -75,7 +82,7 @@ def render_manual_thresholds_tab(  # noqa: C901
     # Próba pobrania domyślnych wartości z automatycznej detekcji
     with st.spinner("Analizowanie progów dla sugestii..."):
         if "hr" in target_df.columns:
-            result = analyze_step_test(
+            result = cached_analyze_step_test(
                 target_df,
                 power_column="watts",
                 ve_column="tymeventilation",
@@ -83,7 +90,7 @@ def render_manual_thresholds_tab(  # noqa: C901
                 time_column="time",
             )
         else:
-            result = analyze_step_test(
+            result = cached_analyze_step_test(
                 target_df,
                 power_column="watts",
                 ve_column="tymeventilation",
@@ -270,13 +277,6 @@ def render_manual_thresholds_tab(  # noqa: C901
             df_s = vslope_res["df_steps"]
 
             # Diagnostic Plot
-            import matplotlib.pyplot as plt
-
-            fig, ax1 = plt.subplots(figsize=(10, 4))
-            plt.style.use("dark_background")
-            fig.patch.set_facecolor("#0E1117")
-            ax1.set_facecolor("#0E1117")
-
             # Używamy 'power' zamiast 'watts' - tak jest w df_steps z detect_vt_cpet
             power_col = "power" if "power" in df_s.columns else "watts"
             ve_col = next(
@@ -285,39 +285,69 @@ def render_manual_thresholds_tab(  # noqa: C901
             if ve_col is None:
                 st.warning("Brak danych VE w wynikach V-Slope.")
                 return
-            ax1.plot(df_s[power_col], df_s[ve_col], "b-", label="VE (L/min)", alpha=0.8)
-            ax1.set_xlabel("Moc [W]")
-            ax1.set_ylabel("VE [L/min]", color="#5da5da")
 
-            ax2 = ax1.twinx()
+            fig_vslope = go.Figure()
+            fig_vslope.add_trace(
+                go.Scatter(
+                    x=df_s[power_col],
+                    y=df_s[ve_col],
+                    mode="lines",
+                    name="VE (L/min)",
+                    line=dict(color="#5da5da", width=2),
+                    hovertemplate="<b>VE:</b> %{y:.1f} L/min<extra></extra>",
+                )
+            )
             slope_col = next((c for c in ["ve_slope", "slope"] if c in df_s.columns), None)
             if slope_col:
-                ax2.plot(df_s[power_col], df_s[slope_col], "g--", label="Slope", alpha=0.5)
-                ax2.set_ylabel("Slope (dVE/dP)", color="#60bd68")
-
-            if v1_w:
-                ax1.axvline(
-                    v1_w, color="#ffa15a", linestyle="--", alpha=0.7, label=f"VT1 Sug: {v1_w}W"
+                fig_vslope.add_trace(
+                    go.Scatter(
+                        x=df_s[power_col],
+                        y=df_s[slope_col],
+                        mode="lines",
+                        name="Slope",
+                        yaxis="y2",
+                        opacity=0.6,
+                        line=dict(color="#60bd68", width=1, dash="dash"),
+                        hovertemplate="<b>Slope:</b> %{y:.3f}<extra></extra>",
+                    )
                 )
-            if v2_w:
-                ax1.axvline(
-                    v2_w, color="#ef553b", linestyle="--", alpha=0.7, label=f"VT2 Sug: {v2_w}W"
-                )
-
-            ax1.legend(loc="upper left", fontsize="x-small")
-            plt.tight_layout()
-            st.pyplot(fig)
+            for watts, label, color in ((v1_w, "VT1 Sug", "#ffa15a"), (v2_w, "VT2 Sug", "#ef553b")):
+                if watts:
+                    fig_vslope.add_vline(
+                        x=watts,
+                        line=dict(color=color, dash="dash"),
+                        opacity=0.7,
+                        annotation_text=f"{label}: {watts}W",
+                        annotation_position="top left",
+                    )
+            fig_vslope.update_layout(
+                xaxis_title="Moc [W]",
+                yaxis=dict(title=dict(text="VE [L/min]", font=dict(color="#5da5da"))),
+                yaxis2=dict(
+                    title=dict(text="Slope (dVE/dP)", font=dict(color="#60bd68")),
+                    overlaying="y",
+                    side="right",
+                    showgrid=False,
+                ),
+                legend=dict(x=0.01, y=0.99),
+                height=400,
+                margin=dict(l=20, r=20, t=40, b=20),
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_vslope, width="stretch")
 
             st.markdown(f"💡 Sugestia V-Slope: **VT1: {v1_w}W**, **VT2: {v2_w}W**")
             ma_c1, ma_c2 = st.columns(2)
             with ma_c1:
-                if st.button("Aplikuj V1", key="m_apply_v1"):
-                    st.session_state["manual_vt1_watts"] = v1_w
-                    st.rerun()
+                # on_click runs before the next rerun — writing a widget key after the
+                # widget exists raises StreamlitAPIException
+                st.button(
+                    "Aplikuj V1", key="m_apply_v1", on_click=_set_state, args=("manual_vt1_watts", v1_w)
+                )
             with ma_c2:
-                if st.button("Aplikuj V2", key="m_apply_v2"):
-                    st.session_state["manual_vt2_watts"] = v2_w
-                    st.rerun()
+                st.button(
+                    "Aplikuj V2", key="m_apply_v2", on_click=_set_state, args=("manual_vt2_watts", v2_w)
+                )
 
     col_z1, col_z2 = st.columns(2)
 
@@ -645,7 +675,7 @@ def render_manual_thresholds_tab(  # noqa: C901
             "Max Heart Rate (bpm)",
             min_value=0,
             max_value=250,
-            value=int(max_hr_input) if max_hr_input > 0 else 190,
+            value=int(max_hr_input) if max_hr_input and max_hr_input > 0 else 190,
             step=1,
         )
 

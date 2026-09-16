@@ -6,6 +6,23 @@ from modules.calculations.kinetics import generate_state_timeline
 from modules.calculations.quality import check_signal_quality
 
 
+def _new_box_range(selection, seen_key):
+    """x-range of a box the user just drew on a chart, or None if it is not a new one.
+
+    Plotly charts keep their last selection across reruns; with two charts driving one
+    range, a stale box on one chart would otherwise undo a fresh box on the other.
+    """
+    boxes = ((selection or {}).get("selection") or {}).get("box") or []
+    x_range = boxes[0].get("x", []) if boxes else []
+    if len(x_range) != 2:
+        return None
+    box = (min(x_range), max(x_range))
+    if st.session_state.get(seen_key) == box:
+        return None
+    st.session_state[seen_key] = box
+    return box
+
+
 def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C901
     st.header("Analiza SmO2 (Oksygenacja Mięśniowa)")
     st.markdown("Analiza surowych danych SmO2, trendów i kontekstu obciążenia.")
@@ -119,6 +136,9 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
             if manual_start_sec is not None and manual_end_sec is not None:
                 st.session_state.smo2_start_sec = manual_start_sec
                 st.session_state.smo2_end_sec = manual_end_sec
+                # Let the same box be drawn again after a manual override.
+                st.session_state.pop("smo2_chart_seen_box", None)
+                st.session_state.pop("thb_chart_seen_box", None)
                 st.success(f"✅ Zaktualizowano zakres: {manual_start} - {manual_end}")
 
     # Użyj wartości z session_state
@@ -263,6 +283,7 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
         )
 
         # ===== WYKRES THb (taki sam jak SmO2) =====
+        selected_thb = None
         if "thb" in target_df.columns:
             st.markdown("---")
 
@@ -360,23 +381,23 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                 hovermode="x unified",
             )
 
-            st.plotly_chart(fig_thb, use_container_width=True, key="thb_chart")
+            selected_thb = st.plotly_chart(
+                fig_thb,
+                use_container_width=True,
+                key="thb_chart",
+                on_select="rerun",
+                selection_mode="box",
+            )
 
-        # Obsługa zaznaczenia
-        if selected and "selection" in selected and "box" in selected["selection"]:
-            box_data = selected["selection"]["box"]
-            if box_data and len(box_data) > 0:
-                x_range = box_data[0].get("x", [])
-                if len(x_range) == 2:
-                    new_start = min(x_range)
-                    new_end = max(x_range)
-                    if (
-                        new_start != st.session_state.smo2_start_sec
-                        or new_end != st.session_state.smo2_end_sec
-                    ):
-                        st.session_state.smo2_start_sec = new_start
-                        st.session_state.smo2_end_sec = new_end
-                        st.rerun()
+        # Obsługa zaznaczenia — SmO2 i THb sterują tym samym zakresem
+        for sel, seen_key in (
+            (selected, "smo2_chart_seen_box"),
+            (selected_thb, "thb_chart_seen_box"),
+        ):
+            box = _new_box_range(sel, seen_key)
+            if box and box != (st.session_state.smo2_start_sec, st.session_state.smo2_end_sec):
+                st.session_state.smo2_start_sec, st.session_state.smo2_end_sec = box
+                st.rerun()
 
         # ===== LEGACY TOOLS =====
         with st.expander("🔧 Szczegółowa Analiza (Legacy Tools)", expanded=False):

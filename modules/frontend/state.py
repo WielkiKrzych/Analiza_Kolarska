@@ -6,6 +6,17 @@ Centralized state manager to handle Session State with type safety.
 import streamlit as st
 from modules.settings import SettingsManager
 
+# Manual threshold inputs read across tabs and by the PDF report (modules/manual_overrides.py)
+MANUAL_INPUT_KEYS = (
+    "manual_vt1_watts", "manual_vt2_watts",
+    "vt1_hr", "vt1_ve", "vt1_br", "vt2_hr", "vt2_ve", "vt2_br",
+    "ve_breakpoint_manual", "test_start_power", "test_end_power", "step_increment",
+    "test_duration",
+    "smo2_lt1_m", "smo2_lt2_m", "smo2_lt1_hr_m", "smo2_lt1_smo2_m", "smo2_lt2_hr_m",
+    "smo2_lt2_smo2_m", "reoxy_halftime_manual",
+    "cci_breakpoint_manual",
+)
+
 class StateManager:
     """Manages application state and settings."""
     
@@ -56,6 +67,21 @@ class StateManager:
             if key in st.session_state:
                 del st.session_state[key]
                 
+    def preserve_widget_state(self, keys) -> None:
+        """Keep widget values alive while their tab is not rendered.
+
+        Streamlit drops a keyed widget's value at the end of any run in which the widget
+        is not rendered; re-assigning the key detaches it from that cleanup.
+        """
+        for key in keys:
+            if key in st.session_state:
+                st.session_state[key] = st.session_state[key]
+
+    def reset_manual_inputs(self) -> None:
+        """Forget manual threshold inputs so a new file starts from its auto-detected values."""
+        for key in MANUAL_INPUT_KEYS:
+            st.session_state.pop(key, None)
+
     def set_data_loaded(self) -> None:
         st.session_state['data_loaded'] = True
         
