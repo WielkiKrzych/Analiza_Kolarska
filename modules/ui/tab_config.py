@@ -6,8 +6,11 @@ Extracted from app.py so adding a new tab only touches this file plus the
 render call site — no more shotgun surgery in the main entry point.
 """
 import importlib
+import logging
 
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 
 class TabRegistry:
@@ -75,6 +78,7 @@ class TabRegistry:
         "manual_thresholds": ("modules.ui.manual_thresholds", "render_manual_thresholds_tab"),
         "vent_thresholds": ("modules.ui.vent_thresholds", "render_vent_thresholds_tab"),
         "ai_coach": ("modules.ui.ai_coach", "render_ai_coach_tab"),
+        "intervals_icu": ("modules.ui.intervals_icu_ui", "render_intervals_icu_section"),
     }
 
     @classmethod
@@ -90,6 +94,7 @@ class TabRegistry:
             func = getattr(module, func_name)
             return func(*args, **kwargs)
         except Exception as e:
+            logger.exception(f"Tab {tab_name} failed to render")
             st.error(f"Error loading tab {tab_name}: {e}")
 
 

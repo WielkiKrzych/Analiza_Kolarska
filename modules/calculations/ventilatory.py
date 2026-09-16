@@ -303,6 +303,44 @@ def detect_vt_from_steps(  # noqa: C901
     return result
 
 
+# Upper bound on (windows × samples-per-window) cells materialised at once.
+_WINDOW_CELLS_PER_CHUNK = 250_000
+
+
+def _gather_windows(values: np.ndarray, lo: np.ndarray, counts: np.ndarray, width: int) -> np.ndarray:
+    """Rows of values[lo:lo + count], NaN-padded to width."""
+    offsets = np.arange(width)
+    out = values[np.minimum(lo[:, None] + offsets, len(values) - 1)]
+    out[offsets >= counts[:, None]] = np.nan
+    return out
+
+
+def _row_nanmean(a: np.ndarray) -> np.ndarray:
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.nansum(a, axis=1) / np.sum(~np.isnan(a), axis=1)
+
+
+def _row_linregress(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Row-wise slope and stderr with scipy.stats.linregress formulas; (0, 0) below 2 points."""
+    valid = ~np.isnan(y)
+    n = valid.sum(axis=1)
+    x = np.where(valid, x, np.nan)
+    if np.any((n > 1) & (np.fmax.reduce(x, axis=1) == np.fmin.reduce(x, axis=1))):
+        raise ValueError("Cannot calculate a linear regression if all x values are identical")
+    with np.errstate(invalid="ignore", divide="ignore"):
+        dx = x - np.nansum(x, axis=1, keepdims=True) / n[:, None]
+        dy = y - np.nansum(y, axis=1, keepdims=True) / n[:, None]
+        ssxm = np.nansum(dx * dx, axis=1) / n
+        ssym = np.nansum(dy * dy, axis=1) / n
+        ssxym = np.nansum(dx * dy, axis=1) / n
+        r = np.clip(ssxym / np.sqrt(ssxm * ssym), -1.0, 1.0)
+        r = np.where((ssxm == 0) | (ssym == 0), np.where(ssxym == 0, np.nan, 0.0), r)
+        slope = ssxym / ssxm
+        stderr = np.where(n == 2, 0.0, np.sqrt((1 - r**2) * ssym / ssxm / (n - 2)))
+    enough = n >= 2
+    return np.where(enough, slope, 0.0), np.where(enough, stderr, 0.0)
+
+
 def detect_vt_transition_zone(
     df: pd.DataFrame,
     window_duration: int = 60,
@@ -312,36 +350,57 @@ def detect_vt_transition_zone(
     hr_column: str = "hr",
     time_column: str = "time",
 ) -> Tuple[Optional[TransitionZone], Optional[TransitionZone]]:
-    """Detect VT transition zones using sliding window."""
+    """Detect VT transition zones using sliding window.
+
+    Windows are evaluated together: rows are sorted by time once and each window is a
+    contiguous slice, so the cost no longer scales with len(df) per window.
+    """
     if len(df) < window_duration:
         return None, None
     min_time, max_time = df[time_column].min(), df[time_column].max()
-    vt1_c, vt2_c = [], []
+    starts = np.arange(int(min_time), int(max_time) - window_duration, step_size)
     Z = 1.96
 
-    for t in range(int(min_time), int(max_time) - window_duration, step_size):
-        mask = (df[time_column] >= t) & (df[time_column] < t + window_duration)
-        w = df[mask]
-        if len(w) < 10:
-            continue
-        slope, _, err = calculate_slope(w[time_column], w[ve_column])
-        l, u = slope - Z * err, slope + Z * err
-        if l <= 0.05 <= u and 0.02 <= slope <= 0.08:
-            vt1_c.append(
-                {
-                    "avg_watts": w[power_column].mean(),
-                    "avg_hr": w[hr_column].mean() if hr_column in w else None,
-                    "std_err": err,
-                }
-            )
-        if l <= 0.15 <= u and 0.10 <= slope <= 0.20:
-            vt2_c.append(
-                {
-                    "avg_watts": w[power_column].mean(),
-                    "avg_hr": w[hr_column].mean() if hr_column in w else None,
-                    "std_err": err,
-                }
-            )
+    def column(name):
+        return df[name].to_numpy(dtype=float, na_value=np.nan)[order]
+
+    time = df[time_column].to_numpy(dtype=float, na_value=np.nan)
+    order = np.argsort(time, kind="stable")[: np.count_nonzero(~np.isnan(time))]
+    t = time[order]
+    lo = np.searchsorted(t, starts, side="left")
+    counts = np.searchsorted(t, starts + window_duration, side="left") - lo
+    lo, counts = lo[counts >= 10], counts[counts >= 10]
+
+    has_hr = hr_column in df
+    ve, watts = column(ve_column), column(power_column)
+    hr = column(hr_column) if has_hr else None
+    slope, err, avg_watts, avg_hr = (np.empty(len(lo)) for _ in range(4))
+    width = int(counts.max()) if len(lo) else 1
+    chunk = max(1, _WINDOW_CELLS_PER_CHUNK // width)
+    for s in range(0, len(lo), chunk):
+        part = slice(s, s + chunk)
+        lo_p, n_p = lo[part], counts[part]
+        slope[part], err[part] = _row_linregress(
+            _gather_windows(t, lo_p, n_p, width), _gather_windows(ve, lo_p, n_p, width)
+        )
+        avg_watts[part] = _row_nanmean(_gather_windows(watts, lo_p, n_p, width))
+        if has_hr:
+            avg_hr[part] = _row_nanmean(_gather_windows(hr, lo_p, n_p, width))
+
+    low, up = slope - Z * err, slope + Z * err
+
+    def candidates(accepted):
+        return [
+            {
+                "avg_watts": avg_watts[i],
+                "avg_hr": avg_hr[i] if has_hr else None,
+                "std_err": err[i],
+            }
+            for i in np.flatnonzero(accepted)
+        ]
+
+    vt1_c = candidates((low <= 0.05) & (0.05 <= up) & (0.02 <= slope) & (slope <= 0.08))
+    vt2_c = candidates((low <= 0.15) & (0.15 <= up) & (0.10 <= slope) & (slope <= 0.20))
 
     def process_c(c, threshold, err_scale):
         if not c:

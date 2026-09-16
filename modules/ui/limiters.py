@@ -7,7 +7,7 @@ def render_limiters_tab(df_plot, cp_input, vt2_vent):  # noqa: C901
     st.markdown("Identyfikujemy Twoje ograniczenia metaboliczne i typ zawodniczy na podstawie danych treningowych.")
 
     # Normalize columns
-    df_plot.columns = df_plot.columns.str.lower().str.strip()
+    df_plot = df_plot.set_axis(df_plot.columns.str.lower().str.strip(), axis=1)
     
     # Handle HR aliases
     if 'hr' not in df_plot.columns:

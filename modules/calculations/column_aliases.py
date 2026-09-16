@@ -18,7 +18,7 @@ HR_ALIASES: tuple[str, ...] = (
     "heartrate",
     "heart_rate_bpm",
 )
-POWER_ALIASES: tuple[str, ...] = ("power",)
+POWER_ALIASES: tuple[str, ...] = ("power", "power_w", "power_watts")
 VE_ALIASES: tuple[str, ...] = ()
 BREATH_RATE_ALIASES: tuple[str, ...] = ("br", "rr", "breath_rate", "respiration")
 HRV_ALIASES: tuple[str, ...] = ("hrv", "rmssd", "hrv_rmssd", "rr_interval", "rr")

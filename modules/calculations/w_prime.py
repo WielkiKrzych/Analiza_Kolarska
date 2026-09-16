@@ -3,12 +3,12 @@ SRP: Moduł odpowiedzialny za obliczenia W' Balance (Skarbiec Beztlenowy).
 """
 
 from typing import Union
+import logging
 import numpy as np
 import pandas as pd
-import io
 from numba import jit
 
-from ..utils import _serialize_df_to_parquet_bytes
+logger = logging.getLogger(__name__)
 
 
 @jit(nopython=True, fastmath=True)
@@ -156,51 +156,6 @@ def calculate_w_prime_biexp(
     return w_bal
 
 
-def _calculate_w_prime_balance_cached(df_bytes: bytes, cp: float, w_prime: float):
-    """Cached version of W' Balance calculation."""
-    try:
-        bio = io.BytesIO(df_bytes)
-        try:
-            df_pd = pd.read_parquet(bio)
-        except Exception:
-            bio.seek(0)
-            df_pd = pd.read_csv(bio)
-
-        if "watts" not in df_pd.columns:
-            df_pd["w_prime_balance"] = np.nan
-            return df_pd
-
-        watts_arr = df_pd["watts"].to_numpy(dtype=np.float64)
-
-        if "time" in df_pd.columns:
-            time_arr = df_pd["time"].to_numpy(dtype=np.float64)
-        else:
-            time_arr = np.arange(len(watts_arr), dtype=np.float64)
-
-        w_bal = calculate_w_prime_fast(watts_arr, time_arr, float(cp), float(w_prime))
-
-        df_pd["w_prime_balance"] = w_bal
-        return df_pd
-
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).warning(f"W' calculation failed: {e}")
-        # Try to return DataFrame with zero W' balance
-        try:
-            bio = io.BytesIO(df_bytes)
-            try:
-                df_pd = pd.read_parquet(bio)
-            except (ImportError, ValueError):
-                bio.seek(0)
-                df_pd = pd.read_csv(bio)
-            df_pd["w_prime_balance"] = 0.0
-            return df_pd
-        except (pd.errors.ParserError, ValueError, KeyError) as recovery_error:
-            logging.getLogger(__name__).error(f"W' recovery failed: {recovery_error}")
-            return pd.DataFrame({"w_prime_balance": []})
-
-
 def calculate_w_prime_balance(_df_pl_active, cp: float, w_prime: float) -> pd.DataFrame:
     """Calculate W' Balance for the entire workout.
 
@@ -217,14 +172,26 @@ def calculate_w_prime_balance(_df_pl_active, cp: float, w_prime: float) -> pd.Da
     elif hasattr(_df_pl_active, "to_pandas"):
         df_pd = _df_pl_active.to_pandas()
     else:
-        df_pd = _df_pl_active.copy()
+        df_pd = _df_pl_active.reset_index(drop=True)
 
     if "time" not in df_pd.columns:
         df_pd["time"] = np.arange(len(df_pd), dtype=float)
 
-    df_bytes = _serialize_df_to_parquet_bytes(df_pd)
-    result_df = _calculate_w_prime_balance_cached(df_bytes, float(cp), float(w_prime))
-    return result_df
+    if "watts" not in df_pd.columns:
+        df_pd["w_prime_balance"] = np.nan
+        return df_pd
+
+    try:
+        df_pd["w_prime_balance"] = calculate_w_prime_fast(
+            df_pd["watts"].to_numpy(dtype=np.float64),
+            df_pd["time"].to_numpy(dtype=np.float64),
+            float(cp),
+            float(w_prime),
+        )
+    except Exception as e:
+        logger.warning(f"W' calculation failed: {e}")
+        df_pd["w_prime_balance"] = 0.0
+    return df_pd
 
 
 # ============================================================

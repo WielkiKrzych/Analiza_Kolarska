@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
 import logging
 
+import pandas as pd
+
 logger = logging.getLogger("Tri_Dashboard.CanonicalPhysio")
 
 
@@ -79,6 +81,11 @@ VO2MAX_SOURCE_PRIORITY = {
     "estimated": 0.40,  # Generic estimate
     "none": 0.0,
 }
+
+
+def _best_5min_power(power_data) -> float:
+    """Best 300-sample mean power (same as the UI KPI); windows with gaps are skipped, NaN if none."""
+    return pd.Series(power_data, dtype=float).rolling(300).mean().max()
 
 
 def calculate_vo2max_acsm(power_watts: float, weight_kg: float) -> float:
@@ -240,13 +247,7 @@ def build_canonical_physiology(  # noqa: C901
     if "acsm_5min" not in vo2max_candidates and time_series and weight_kg > 0:
         power_data = time_series.get("power_watts", [])
         if len(power_data) >= 300:
-            # Find 5-min MMP using rolling window
-            window = 300
-            mmp_5m = 0
-            for i in range(len(power_data) - window + 1):
-                avg = sum(power_data[i : i + window]) / window
-                if avg > mmp_5m:
-                    mmp_5m = avg
+            mmp_5m = _best_5min_power(power_data)
             if mmp_5m > 0:
                 vo2max_candidates["mmp_5min"] = mmp_5m  # Will be converted
 
@@ -264,12 +265,7 @@ def build_canonical_physiology(  # noqa: C901
         # Calculate time_series estimate for comparison
         power_data = time_series.get("power_watts", [])
         if len(power_data) >= 300:
-            window = 300
-            ts_mmp5 = 0
-            for i in range(len(power_data) - window + 1):
-                avg = sum(power_data[i : i + window]) / window
-                if avg > ts_mmp5:
-                    ts_mmp5 = avg
+            ts_mmp5 = _best_5min_power(power_data)
             if ts_mmp5 > 0:
                 ts_vo2max = calculate_vo2max_acsm(ts_mmp5, weight_kg)
                 divergence = abs(physio.vo2max.value - ts_vo2max)

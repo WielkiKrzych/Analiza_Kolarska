@@ -4,7 +4,7 @@ SmO2 Manual Thresholds tab — step-test SmO2 threshold entry and slope analysis
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from modules.calculations.thresholds import analyze_step_test
+from modules.ui.shared import cached_analyze_step_test
 from modules.calculations.quality import check_step_test_protocol
 
 
@@ -64,7 +64,7 @@ def render_smo2_manual_thresholds_tab(target_df, training_notes, uploaded_file_n
 
     # Próba pobrania domyślnych wartości z automatycznej detekcji
     with st.spinner("Analizowanie progów SmO2 dla sugestii..."):
-        result = analyze_step_test(
+        result = cached_analyze_step_test(
             target_df,
             power_column="watts",
             ve_column="tymeventilation" if "tymeventilation" in target_df.columns else None,

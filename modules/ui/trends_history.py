@@ -13,14 +13,14 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
-from modules.db import SessionStore
+from modules.cache_utils import get_session_store
 
 
 def render_trends_history_tab():
     """Render historical trends analysis tab."""
     st.header("📈 Historical Trends")
     
-    store = SessionStore()
+    store = get_session_store()
     session_count = store.get_session_count()
     
     if session_count < 3:

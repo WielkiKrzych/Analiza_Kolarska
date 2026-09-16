@@ -33,22 +33,6 @@ def parse_time_input(t_str: str) -> int | None:
     return None
 
 
-def _serialize_df_to_parquet_bytes(df: pd.DataFrame) -> bytes:
-    """Serialize DataFrame to bytes for caching.
-
-    Tries parquet first (faster), falls back to CSV.
-    """
-    bio = io.BytesIO()
-    try:
-        df.to_parquet(bio, index=False)
-        return bio.getvalue()
-    except (ImportError, ValueError) as e:
-        logger.debug(f"Parquet serialization failed, using CSV: {e}")
-        bio = io.BytesIO()
-        df.to_csv(bio, index=False)
-        return bio.getvalue()
-
-
 def normalize_columns_pandas(df_pd: pd.DataFrame) -> pd.DataFrame:
     """Normalize column names to lowercase and apply standard mappings.
 
@@ -98,7 +82,7 @@ _COLUMN_ALIAS_INDEX = {
         "heartrate_bpm",
         "hr_bpm",
     },
-    "watts": {"power", "pwr", "moc", "w", "watts"},
+    "watts": {"power", "pwr", "moc", "w", "watts", "power_w", "power_watts"},
     "core_temperature": {"core temp", "core_temp", "temp_central", "temp", "core temperature"},
     "skin_temperature": {"skin temp", "skin_temp", "skin temperature"},
     "tymeventilation": {"ve", "ventilation", "vent", "tymeventilation"},
@@ -110,8 +94,9 @@ _COLUMN_ALIAS_INDEX = {
         "respiration rate",
         "tymebreathrate",
     },
-    "cadence": {"cad", "rpm", "cadence"},
+    "cadence": {"cad", "rpm", "cadence", "cadence_rpm"},
     "thb": {"total_hemoglobin", "total hemoglobin", "thb"},
+    "distance": {"distance_m", "distance"},
 }
 
 
@@ -137,24 +122,29 @@ def _clean_hrv_value(val: str) -> float:
         return np.nan
 
 
+def _sniff_separator(content: bytes) -> str:
+    """Detect the CSV delimiter from the header line.
+
+    Readers do not raise on a semicolon file parsed with the comma default —
+    they return a single glued column — so the separator must be decided up
+    front instead of via exception fallback.
+    """
+    header = content.split(b"\n", 1)[0].decode("utf-8", errors="ignore")
+    return max((",", ";", "\t"), key=header.count)
+
+
 def _read_raw_file(file) -> pd.DataFrame:
     """Read file content into raw DataFrame using Polars/Pandas."""
+    file.seek(0)
+    content = file.read()
+    file.seek(0)
+    sep = _sniff_separator(content)
+
     # Try Polars first for speed
     try:
         import polars as pl
 
-        file.seek(0)
-        content = file.read()
-        file.seek(0)
-
-        # Try comma separator
-        try:
-            pl_df = pl.read_csv(io.BytesIO(content))
-        except Exception:
-            # Try semicolon
-            pl_df = pl.read_csv(io.BytesIO(content), separator=";")
-
-        df_pd = pl_df.to_pandas()
+        df_pd = pl.read_csv(io.BytesIO(content), separator=sep).to_pandas()
         logger.debug("Loaded data with Polars (fast mode)")
         return df_pd
     except Exception as e:
@@ -162,17 +152,11 @@ def _read_raw_file(file) -> pd.DataFrame:
         # Pandas fallback with pyarrow engine for better performance
         try:
             file.seek(0)
-            # Use pyarrow engine for faster parsing of large files
-            return pd.read_csv(file, low_memory=False, engine="pyarrow")
-        except (pd.errors.ParserError, UnicodeDecodeError, ImportError) as e:
+            return pd.read_csv(file, sep=sep, low_memory=False, engine="pyarrow")
+        except (pd.errors.ParserError, UnicodeDecodeError, ImportError, ValueError) as e:
             logger.info(f"PyArrow CSV parse failed, trying standard engine: {e}")
-            try:
-                file.seek(0)
-                return pd.read_csv(file, low_memory=False)
-            except (pd.errors.ParserError, UnicodeDecodeError) as e:
-                logger.info(f"Standard CSV parse failed, trying semicolon separator: {e}")
-                file.seek(0)
-                return pd.read_csv(file, sep=";", low_memory=False)
+            file.seek(0)
+            return pd.read_csv(file, sep=sep, low_memory=False)
 
 
 def _process_hrv_column(df: pd.DataFrame) -> pd.DataFrame:

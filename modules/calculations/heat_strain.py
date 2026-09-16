@@ -7,7 +7,59 @@ from typing import Union, Any, Optional, Tuple
 import pandas as pd
 import numpy as np
 from .common import ensure_pandas
-from .thermal import calculate_heat_strain_index as calculate_psi
+
+
+def calculate_psi(
+    df_pl: Union[pd.DataFrame, Any],
+    resting_hr: float = 0.0,
+    hr_max: float = 0.0,
+    baseline_core_temp: float = 0.0,
+    acclimatization_days: int = 0,
+) -> pd.DataFrame:
+    """Physiological Strain Index (Moran et al. 1998) with aPSI correction (Buller et al. 2023).
+
+    PSI = 5 × (Tcore_t - Tcore_0) / (39.5 - Tcore_0) + 5 × (HR_t - HR_0) / (HRmax - HR_0)
+
+    Baselines not provided (<= physiological floor) are estimated from the first 60 s.
+    Returns a copy with an 'hsi' column (0-10) and 'hsi_acclimated' flag.
+    """
+    df = ensure_pandas(df_pl).copy()
+    core_col = "core_temperature_smooth" if "core_temperature_smooth" in df.columns else None
+
+    if not core_col or "heartrate_smooth" not in df.columns:
+        df["hsi"] = None
+        return df
+
+    warmup_samples = max(5, min(60, len(df) // 4))
+
+    tcore_0 = (
+        baseline_core_temp
+        if baseline_core_temp > 35.0
+        else float(df[core_col].iloc[:warmup_samples].median())
+    )
+    hr_0 = (
+        resting_hr
+        if resting_hr > 30
+        else float(df["heartrate_smooth"].iloc[:warmup_samples].quantile(0.10))
+    )
+    hr_max_val = hr_max if hr_max > 100 else float(df["heartrate_smooth"].max())
+
+    temp_denom = max(0.5, 39.5 - tcore_0)
+    hr_denom = max(10.0, hr_max_val - hr_0)
+
+    temp_component = 5.0 * (df[core_col] - tcore_0) / temp_denom
+    hr_component = 5.0 * (df["heartrate_smooth"] - hr_0) / hr_denom
+    df["hsi"] = (temp_component + hr_component).clip(0.0, 10.0)
+
+    # Acclimatized athletes (10+ days) tolerate higher strain — reduce effective PSI
+    if acclimatization_days >= 10:
+        acclim_factor = min(0.85, 1.0 - (acclimatization_days - 10) * 0.01)
+        df["hsi"] = (df["hsi"] * acclim_factor).clip(0.0, 10.0)
+        df["hsi_acclimated"] = True
+    else:
+        df["hsi_acclimated"] = False
+
+    return df
 
 
 def calculate_heat_strain_index_enhanced(  # noqa: C901

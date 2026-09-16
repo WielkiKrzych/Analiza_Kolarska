@@ -41,7 +41,7 @@ def analyze_step_test(  # noqa: C901
         StepTestResult with validation_report, thresholds, and analysis notes
     """
     result = StepTestResult()
-    df.columns = df.columns.str.lower().str.strip()
+    df = df.set_axis(df.columns.str.lower().str.strip(), axis=1)
 
     has_ve = ve_column in df.columns
     has_smo2 = smo2_column in df.columns

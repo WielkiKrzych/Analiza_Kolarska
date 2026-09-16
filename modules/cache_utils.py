@@ -5,8 +5,8 @@ Provides memoization for CPU-intensive operations with TTL support.
 Uses diskcache as a simple alternative to Redis (no external dependencies).
 """
 
+import dataclasses
 import hashlib
-import json
 import pickle
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
@@ -117,21 +117,30 @@ def _generate_cache_key(func_name: str, args: tuple, kwargs: dict) -> str:
 
 
 def _hash_arg(arg: Any) -> str:
-    """Convert argument to hashable string representation."""
-    if isinstance(arg, pd.DataFrame):
-        # Hash based on column names and shape (not full data for performance)
-        cols = ",".join(sorted(arg.columns))
-        return f"DF:{cols}:{len(arg)}"
-    elif isinstance(arg, pd.Series):
-        return f"SER:{arg.name}:{len(arg)}"
-    elif isinstance(arg, np.ndarray):
-        return f"ARR:{arg.shape}:{arg.dtype}"
-    elif isinstance(arg, (list, tuple)):
-        return f"LIST:{len(arg)}"
-    elif isinstance(arg, dict):
-        return f"DICT:{len(arg)}"
-    else:
-        return str(arg)
+    """Content digest of an argument.
+
+    Keys must cover the data itself: two rides with the same shape (e.g. identical ramp
+    protocols) would otherwise share a cache entry and return each other's results.
+    """
+    if isinstance(arg, (pd.DataFrame, pd.Series)):
+        labels = list(arg.columns) if isinstance(arg, pd.DataFrame) else [arg.name]
+        try:
+            values = pd.util.hash_pandas_object(arg, index=True).to_numpy().tobytes()
+        except TypeError:  # unhashable cells (lists, dicts)
+            values = pickle.dumps(arg)
+        return f"PD:{hashlib.md5(repr(labels).encode() + values).hexdigest()}"
+    if isinstance(arg, np.ndarray):
+        digest = hashlib.md5(np.ascontiguousarray(arg).tobytes()).hexdigest()
+        return f"ARR:{arg.dtype}:{arg.shape}:{digest}"
+    if isinstance(arg, (list, tuple)):
+        return f"{type(arg).__name__}[{','.join(_hash_arg(a) for a in arg)}]"
+    if isinstance(arg, dict):
+        items = sorted(arg.items(), key=lambda kv: repr(kv[0]))
+        return "DICT{" + ",".join(f"{k!r}:{_hash_arg(v)}" for k, v in items) + "}"
+    if dataclasses.is_dataclass(arg) and not isinstance(arg, type):
+        fields = {f.name: getattr(arg, f.name) for f in dataclasses.fields(arg)}
+        return f"{type(arg).__name__}{_hash_arg(fields)}"
+    return repr(arg)
 
 
 def _invalidate_cache(func_name: str, args: tuple, kwargs: dict, key_func: Optional[Callable]):
@@ -181,40 +190,6 @@ def get_cache_stats() -> dict:
         return {"enabled": True, "size": len(cache), "volume": cache.volume()}
     except Exception:
         return {"enabled": True, "error": "Could not get stats"}
-
-
-# Pre-configured cache decorators for common use cases
-
-cache_1h = cache_result(ttl=3600)  # 1 hour
-cache_24h = cache_result(ttl=86400)  # 24 hours
-cache_7d = cache_result(ttl=604800)  # 7 days
-
-
-# Cached versions of expensive operations
-
-
-@cache_result(ttl=3600)
-def cached_analyze_step_test(df: pd.DataFrame, **kwargs) -> Any:
-    """Cached version of step test analysis."""
-    from modules.calculations.thresholds import analyze_step_test
-
-    return analyze_step_test(df, **kwargs)
-
-
-@cache_result(ttl=3600)
-def cached_detect_smo2_thresholds(df: pd.DataFrame, **kwargs) -> Any:
-    """Cached version of SmO2 threshold detection."""
-    from modules.calculations.smo2_advanced import detect_smo2_thresholds_moxy
-
-    return detect_smo2_thresholds_moxy(df, **kwargs)
-
-
-@cache_result(ttl=86400)  # 24 hours - CP doesn't change often
-def cached_calculate_cp_wprime(df: pd.DataFrame, **kwargs) -> tuple:
-    """Cached version of CP/W' calculation."""
-    from modules.calculations.power import calculate_cp_wprime
-
-    return calculate_cp_wprime(df, **kwargs)
 
 
 @cache_result(ttl=3600)

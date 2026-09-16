@@ -1,8 +1,9 @@
 """
-Vent Thresholds — CPET chart panels (VE-only) using Matplotlib.
+Vent Thresholds — CPET chart panels (VE-only), interactive Plotly.
 """
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 
@@ -15,8 +16,6 @@ def render_cpet_charts(cpet_result: dict) -> None:
     """
     st.markdown("---")
     with st.expander("📊 Wykresy CPET", expanded=True):
-        import matplotlib.pyplot as plt
-
         df_s = cpet_result.get("df_steps")
         v1_w = cpet_result.get("vt1_watts")
         v2_w = cpet_result.get("vt2_watts")
@@ -28,35 +27,37 @@ def render_cpet_charts(cpet_result: dict) -> None:
         # VE-only: no gas-exchange panels — the hardware is a TymeWear VitalPro.
         st.markdown("### Wykres VE vs Power")
 
-        fig, ax1 = plt.subplots(figsize=(10, 5))
-        plt.style.use("dark_background")
-        fig.patch.set_facecolor("#0E1117")
-        ax1.set_facecolor("#0E1117")
-
-        if "ve" in df_s.columns:
-            ax1.plot(df_s["power"], df_s["ve"], "b-o", linewidth=2, label="VE (L/min)")
-        elif "ve_smooth" in df_s.columns:
-            ax1.plot(df_s["power"], df_s["ve_smooth"], "b-o", linewidth=2, label="VE (L/min)")
-
-        ax1.set_xlabel("Moc [W]", color="white")
-        ax1.set_ylabel("Wentylacja [L/min]", color="#5da5da")
-
-        if v1_w:
-            ax1.axvline(
-                v1_w, color="#ffa15a", linestyle="--", linewidth=2, label=f"VT1: {v1_w}W"
+        ve_col = next((c for c in ("ve", "ve_smooth") if c in df_s.columns), None)
+        fig = go.Figure()
+        if ve_col:
+            fig.add_trace(
+                go.Scatter(
+                    x=df_s["power"],
+                    y=df_s[ve_col],
+                    mode="lines+markers",
+                    name="VE (L/min)",
+                    line=dict(color="#5da5da", width=2),
+                    hovertemplate="<b>Moc:</b> %{x:.0f} W<br><b>VE:</b> %{y:.1f} L/min<extra></extra>",
+                )
             )
-        if v2_w:
-            ax1.axvline(
-                v2_w, color="#ef553b", linestyle="--", linewidth=2, label=f"VT2: {v2_w}W"
-            )
-
-        ax1.set_title("VE vs Power z Progami VT1/VT2", color="white", pad=10)
-        ax1.grid(True, alpha=0.2)
-        ax1.legend(loc="upper left")
-
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
+        for watts, label, color in ((v1_w, "VT1", "#ffa15a"), (v2_w, "VT2", "#ef553b")):
+            if watts:
+                fig.add_vline(
+                    x=watts,
+                    line=dict(color=color, width=2, dash="dash"),
+                    annotation_text=f"{label}: {watts}W",
+                    annotation_position="top left",
+                )
+        fig.update_layout(
+            title="VE vs Power z Progami VT1/VT2",
+            xaxis_title="Moc [W]",
+            yaxis=dict(title=dict(text="Wentylacja [L/min]", font=dict(color="#5da5da"))),
+            legend=dict(x=0.01, y=0.99),
+            height=450,
+            margin=dict(l=20, r=20, t=40, b=20),
+            hovermode="closest",
+        )
+        st.plotly_chart(fig, width="stretch")
         # Secondary zones table
         st.markdown("### 🎯 Strefy Metaboliczne")
         if v1_w and v2_w:
