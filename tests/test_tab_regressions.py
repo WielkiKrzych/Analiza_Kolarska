@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from modules.calculations import calculate_heat_strain_index_enhanced
+from modules.calculations.thermal import calculate_heat_strain_index
 
 
 @pytest.fixture
@@ -18,28 +18,23 @@ def non_ramp_vent_df(sample_power_df):
     return df
 
 
-def test_heat_strain_enhanced_computes_psi_without_mutating_input():
+def test_heat_strain_index_reads_recorded_core_index_without_mutating_input():
     n = 600
     df = pd.DataFrame(
         {
             "time": np.arange(n, dtype=float),
             "core_temperature_smooth": np.linspace(37.0, 38.8, n),
             "heartrate_smooth": np.linspace(95, 175, n),
+            # HSI is computed by the CORE sensor; the app must only read it.
+            "heat_strain_index": np.linspace(0.0, 8.0, n),
         }
     )
     original_columns = list(df.columns)
 
-    out = calculate_heat_strain_index_enhanced(df, resting_hr=50, hr_max=190)
+    out = calculate_heat_strain_index(df)
 
-    assert out["hsi"].between(0, 10).all()
-    assert out["hsi"].iloc[-1] > out["hsi"].iloc[0]
+    assert out["hsi"].equals(df["heat_strain_index"])
     assert list(df.columns) == original_columns
-
-
-def test_w_prime_reconstitution_tab_renders(sample_long_ride_df):
-    from modules.ui.w_prime_reconstitution_ui import render_w_prime_reconstitution_tab
-
-    render_w_prime_reconstitution_tab(sample_long_ride_df, sample_long_ride_df, {}, 75.0, 250, 15000)
 
 
 def _render_tab_then_marker(tab_name, args):
@@ -51,18 +46,15 @@ def _render_tab_then_marker(tab_name, args):
     st.markdown("AFTER_TAB")
 
 
-@pytest.mark.parametrize(
-    "tab_name, extra_args",
-    [("manual_thresholds", (280, 190)), ("vent_thresholds", (280,))],
-)
-def test_invalid_protocol_does_not_stop_rest_of_app(tab_name, extra_args, non_ramp_vent_df):
-    args = (non_ramp_vent_df, None, "ride.csv", *extra_args)
-    at = AppTest.from_function(_render_tab_then_marker, args=(tab_name, args), default_timeout=30)
+def test_non_step_data_does_not_stop_rest_of_app(non_ramp_vent_df):
+    from modules.notes import TrainingNotes
+
+    args = (non_ramp_vent_df, TrainingNotes(), "ride.csv")
+    at = AppTest.from_function(_render_tab_then_marker, args=("vent", args), default_timeout=30)
     at.run()
 
     assert not at.exception
     assert not [e.value for e in at.error if "Error loading tab" in e.value]
-    assert any("Protokołem" in e.value for e in at.error)
     assert any(m.value == "AFTER_TAB" for m in at.markdown)
 
 

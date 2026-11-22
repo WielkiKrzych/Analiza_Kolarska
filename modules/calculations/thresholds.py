@@ -295,7 +295,7 @@ def estimate_ftp_from_ramp(df_steps: pd.DataFrame, map_ratio: float = 0.75) -> d
     as such.
 
     Args:
-        df_steps: Per-step table from detect_vt_cpet() (needs a 'power' column)
+        df_steps: Per-step table from the step-test detector (needs a 'power' column)
         map_ratio: MAP → FTP coefficient
 
     Returns:

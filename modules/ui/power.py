@@ -161,7 +161,7 @@ def render_power_tab(
     st.subheader("Wykres Mocy i W'")
     # Use cached chart building
     fig_pw = _build_power_w_chart(df_plot_resampled, cp_input, w_prime_input)
-    st.plotly_chart(fig_pw, use_container_width=True)
+    st.plotly_chart(fig_pw, width="stretch")
 
     st.info("""
     **💡 Interpretacja: Energia Beztlenowa (W' Balance)**
@@ -185,7 +185,7 @@ def render_power_tab(
     st.subheader("Czas w Strefach Mocy (Time in Zones)")
     fig_z = _build_zones_chart(df_plot, cp_input)
     if fig_z is not None:
-        st.plotly_chart(fig_z, use_container_width=True)
+        st.plotly_chart(fig_z, width="stretch")
 
         st.info("""
         **💡 Interpretacja Treningowa:**

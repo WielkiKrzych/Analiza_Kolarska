@@ -241,8 +241,8 @@ def render_summary_tab(  # noqa: C901
     rider_weight: float,
     vt1_watts: int = 0,
     vt2_watts: int = 0,
-    lt1_watts: int = 0,
-    lt2_watts: int = 0,
+    lt1_watts: Optional[int] = None,
+    lt2_watts: Optional[int] = None,
 ):
     """Renderowanie zakładki Podsumowanie z kluczowymi wykresami i metrykami."""
     st.header("📊 Podsumowanie Treningu")
@@ -266,15 +266,15 @@ def render_summary_tab(  # noqa: C901
         if vt2_watts > 0
         else (threshold_result.vt2_watts if threshold_result.vt2_watts else 0)
     )
-    # Use smo2_result for LT1/LT2 (same algorithm as SmO2 - Progi tab)
+    # LT1/LT2 come from the SmO2 detection; the caller passes no proxy values.
     eff_lt1 = (
         lt1_watts
-        if lt1_watts > 0
+        if lt1_watts and lt1_watts > 0
         else (smo2_result.t1_watts if smo2_result and smo2_result.t1_watts else 0)
     )
     eff_lt2 = (
         lt2_watts
-        if lt2_watts > 0
+        if lt2_watts and lt2_watts > 0
         else (smo2_result.t2_onset_watts if smo2_result and smo2_result.t2_onset_watts else 0)
     )
 
@@ -286,7 +286,7 @@ def render_summary_tab(  # noqa: C901
     # Use cached chart building
     fig_training = _build_training_timeline_chart(df_plot)
     if fig_training is not None:
-        st.plotly_chart(fig_training, use_container_width=True)
+        st.plotly_chart(fig_training, width="stretch")
 
     # =========================================================================
     # 1a. METRYKI POD WYKRESEM
@@ -346,7 +346,7 @@ def render_summary_tab(  # noqa: C901
         )
         fig_ve_br.update_yaxes(title_text="VE (L/min)", secondary_y=False)
         fig_ve_br.update_yaxes(title_text="BR (/min)", secondary_y=True)
-        st.plotly_chart(fig_ve_br, use_container_width=True)
+        st.plotly_chart(fig_ve_br, width="stretch")
 
         # Oblicz statystyki VE i BR
         ve_min = df_plot["tymeventilation"].min()
@@ -606,7 +606,7 @@ def _render_smo2_thb_chart(df_plot):
     )
     fig_smo2_thb.update_yaxes(title_text="SmO2 (%)", secondary_y=False)
     fig_smo2_thb.update_yaxes(title_text="THb (g/dL)", secondary_y=True)
-    st.plotly_chart(fig_smo2_thb, use_container_width=True)
+    st.plotly_chart(fig_smo2_thb, width="stretch")
 
     # Oblicz statystyki SmO2 i THb
     if "smo2" in df_plot.columns:

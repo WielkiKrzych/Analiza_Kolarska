@@ -28,11 +28,29 @@ from modules.ui.tab_layout import NAV_WIDGET_KEYS, SessionContext, Tab, render_s
 MIN_POWER_SAMPLES_FOR_RAMP = 300
 
 
+def _summary_pdf_key(ctx: SessionContext) -> tuple:
+    """Parameters the cached PDF was generated for."""
+    return (
+        ctx.rider_weight,
+        ctx.cp,
+        ctx.w_prime,
+        ctx.vt1_watts,
+        ctx.vt2_watts,
+        st.session_state.get("current_file_hash"),
+        ctx.file_name,
+    )
+
+
 def _render_summary_pdf_export(tab: Tab, ctx: SessionContext) -> None:
     """PDF export panel shown under the Summary tab."""
     if tab.name != "summary":
         return
     st.divider()
+    current_key = _summary_pdf_key(ctx)
+    if st.session_state.get("summary_pdf_key") != current_key:
+        # Sidebar parameters changed after generating: the PDF is stale.
+        st.session_state.pop("summary_pdf_bytes", None)
+        st.session_state.pop("summary_pdf_key", None)
     with st.expander("📄 Eksport raportu PDF"):
         if st.button("Generuj raport PDF", key="btn_gen_pdf"):
             with st.spinner("Generowanie PDF…"):
@@ -49,17 +67,21 @@ def _render_summary_pdf_export(tab: Tab, ctx: SessionContext) -> None:
                         ctx.rider_weight,
                         ctx.vt1_watts,
                         ctx.vt2_watts,
-                        ctx.vt1_watts,  # lt1 proxy
-                        ctx.vt2_watts,  # lt2 proxy
+                        None,  # LT1 comes from the SmO2 detection, not a VT proxy
+                        None,  # LT2 comes from the SmO2 detection, not a VT proxy
                         threshold_result,
                         smo2_result,
                         ctx.file_name,
                     )
                     st.session_state["summary_pdf_bytes"] = pdf_bytes
+                    st.session_state["summary_pdf_key"] = current_key
                 except Exception as e:
                     logger.warning(f"PDF generation failed: {e}")
                     st.error(f"Nie udało się wygenerować PDF: {e}")
-        if st.session_state.get("summary_pdf_bytes"):
+        if (
+            st.session_state.get("summary_pdf_bytes")
+            and st.session_state.get("summary_pdf_key") == current_key
+        ):
             st.download_button(
                 "⬇️ Pobierz PDF",
                 data=st.session_state["summary_pdf_bytes"],
@@ -118,6 +140,7 @@ if uploaded_file is not None:
                 # New file - process and cache
                 state.reset_manual_inputs()
                 st.session_state.pop("summary_pdf_bytes", None)  # previous file's PDF
+                st.session_state.pop("summary_pdf_key", None)
                 session_type = classify_session_type(df_raw, uploaded_file.name)
                 st.session_state["session_type"] = session_type
                 st.session_state["current_file_hash"] = current_file_hash
@@ -177,7 +200,13 @@ if uploaded_file is not None:
     if st.session_state.get("autosaved_key") != autosave_key:
         try:
             session_data = prepare_session_record(
-                uploaded_file.name, df_plot, metrics, np_header, if_header, tss_header
+                uploaded_file.name,
+                df_plot,
+                metrics,
+                np_header,
+                if_header,
+                tss_header,
+                file_hash=current_file_hash,
             )
             get_session_store().add_session(SessionRecord(**session_data))
             st.session_state["autosaved_key"] = autosave_key

@@ -276,7 +276,7 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
         # Wykres z interaktywnym zaznaczaniem
         selected = st.plotly_chart(
             fig_smo2,
-            use_container_width=True,
+            width="stretch",
             key="smo2_chart",
             on_select="rerun",
             selection_mode="box",
@@ -383,7 +383,7 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
 
             selected_thb = st.plotly_chart(
                 fig_thb,
-                use_container_width=True,
+                width="stretch",
                 key="thb_chart",
                 on_select="rerun",
                 selection_mode="box",
@@ -435,7 +435,7 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                     height=400,
                     hovermode="closest",
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, width="stretch")
 
             # THb Visualization
             if "thb" in interval_data.columns:
@@ -465,7 +465,7 @@ def render_smo2_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                     height=300,
                     hovermode="x unified",
                 )
-                st.plotly_chart(fig_thb, use_container_width=True)
+                st.plotly_chart(fig_thb, width="stretch")
 
     else:
         st.warning("Brak danych w wybranym zakresie.")

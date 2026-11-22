@@ -6,13 +6,13 @@ Centralized state manager to handle Session State with type safety.
 import streamlit as st
 from modules.settings import SettingsManager
 
-# Manual threshold inputs read across tabs and by the PDF report (modules/manual_overrides.py)
+# Manual threshold inputs kept alive across tab switches
 MANUAL_INPUT_KEYS = (
     "manual_vt1_watts", "manual_vt2_watts",
     "vt1_hr", "vt1_ve", "vt1_br", "vt2_hr", "vt2_ve", "vt2_br",
-    "ve_breakpoint_manual", "test_start_power", "test_end_power", "step_increment",
+    "ve_breakpoint_manual", "test_start_power", "test_end_power",
     "test_duration",
-    "smo2_lt1_m", "smo2_lt2_m", "smo2_lt1_hr_m", "smo2_lt1_smo2_m", "smo2_lt2_hr_m",
+    "smo2_lt1_m", "smo2_lt2_m", "smo2_lt1_smo2_m",
     "smo2_lt2_smo2_m", "reoxy_halftime_manual",
     "cci_breakpoint_manual",
 )
@@ -37,28 +37,20 @@ class StateManager:
         }
 
     def init_session_state(self) -> None:
-        """Initialize session state, overlaying saved settings every run.
+        """Seed missing session keys from the settings defaults.
 
-        The overlay is UNCONDITIONAL (like Tri_Dashboard): rider params always
-        reflect the settings defaults, so stale session values from an earlier
-        server run cannot mask them.
+        Existing values win, so values entered in the sidebar survive the rerun
+        triggered by pressing Enter (Streamlit reruns the whole script and a
+        blind overlay would reset them to the defaults).
         """
         saved_settings = self.settings_manager.load_settings()
 
         for ui_key, json_key in self._keys_map.items():
-            if json_key in saved_settings:
+            if ui_key not in st.session_state and json_key in saved_settings:
                 st.session_state[ui_key] = saved_settings[json_key]
 
         if 'report_generation_requested' not in st.session_state:
             st.session_state['report_generation_requested'] = False
-
-    def save_settings_callback(self) -> None:
-        """Callback to save current UI values to persistence."""
-        current_values = {}
-        for ui_key, json_key in self._keys_map.items():
-            if ui_key in st.session_state:
-                current_values[json_key] = st.session_state[ui_key]
-        self.settings_manager.save_settings(current_values)
 
     def cleanup_old_data(self) -> None:
         """Clean up old DataFrames from session state."""

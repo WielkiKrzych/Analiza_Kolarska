@@ -19,12 +19,10 @@ PARAMS = {
     "cp": 280, "w_prime": 20000, "crank_length": 172.5,
 }
 
-# Intervals.icu tab talks to the live API when a key is configured — not a unit-test concern.
-OFFLINE_TABS = [
+ALL_TABS = [
     pytest.param(tab, id=tab.name)
     for group in TAB_GROUPS
     for tab in group.tabs
-    if tab.name != "intervals_icu"
 ]
 
 
@@ -57,7 +55,7 @@ def isolated_db(tmp_path, monkeypatch):
     st.cache_resource.clear()
 
 
-@pytest.mark.parametrize("tab", OFFLINE_TABS)
+@pytest.mark.parametrize("tab", ALL_TABS)
 def test_tab_renders_without_error(tab, synthetic_ramp_df, isolated_db, caplog):
     ctx = build_context(synthetic_ramp_df)
 
@@ -97,7 +95,7 @@ def navigate(at, group_label, tab_label=None):
         at.button_group(key=f"nav_tab_{group_idx}").set_value(tab_label).run()
 
 
-def test_only_selected_tab_renders_and_manual_threshold_survives_navigation(
+def test_only_selected_tab_renders_and_input_survives_navigation(
     synthetic_ramp_df, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(Config, "DB_PATH", tmp_path / "training_history.db")
@@ -111,21 +109,21 @@ def test_only_selected_tab_renders_and_manual_threshold_survives_navigation(
     assert not at.exception
     assert not at.number_input  # Overview → KPI report has no manual inputs
 
-    navigate(at, "🔬 Fizjologia (TD)", "🛠️ Manual Thresholds")
+    navigate(at, "🧠 Intelligence", "🔁 Intervals")
     assert not at.exception
-    at.number_input(key="manual_vt1_watts").set_value(255).run()
+    at.number_input(key="cci_breakpoint_manual").set_value(250).run()
 
     navigate(at, "⚡ Performance")
     assert not at.exception
-    assert "manual_vt1_watts" not in [w.key for w in at.number_input]
+    assert "cci_breakpoint_manual" not in [w.key for w in at.number_input]
 
-    navigate(at, "🔬 Fizjologia (TD)")
+    navigate(at, "🧠 Intelligence")
     assert not at.exception
-    assert at.button_group(key="nav_tab_5").value == "🛠️ Manual Thresholds"
-    assert at.number_input(key="manual_vt1_watts").value == 255  # auto-detected VT1 is ~334 W
+    assert at.button_group(key="nav_tab_2").value == "🔁 Intervals"
+    assert at.number_input(key="cci_breakpoint_manual").value == 250
 
 
-@pytest.mark.parametrize("tab_name", ["summary", "limiters"])
+@pytest.mark.parametrize("tab_name", ["summary", "vent"])
 def test_tab_does_not_rename_columns_of_shared_frame(tab_name, synthetic_ramp_df, isolated_db):
     ctx = build_context(synthetic_ramp_df)
     ctx.df_plot["Lap Marker "] = 1

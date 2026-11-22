@@ -47,6 +47,10 @@ def validate_dataframe(df: pd.DataFrame) -> Tuple[bool, str]:  # noqa: C901
             f"Brak wymaganych kolumn danych. Oczekiwane przynajmniej jedna z: {Config.VALIDATION_DATA_COLS}",
         )
 
+    # 3b. Power is mandatory: the whole pipeline (W', NP, TSS, charts) reads 'watts'.
+    if "watts" not in cols:
+        return False, "Plik musi zawierać kolumnę mocy ('watts')."
+
     # 4. Length Check
     if len(df) < Config.MIN_DF_LENGTH:
         return False, f"Za mało danych ({len(df)} rekordów). Minimum: {Config.MIN_DF_LENGTH}."

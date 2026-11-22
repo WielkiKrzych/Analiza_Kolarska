@@ -9,37 +9,27 @@ from .common import ensure_pandas
 
 
 def calculate_heat_strain_index(df_pl: Union[pd.DataFrame, Any]) -> pd.DataFrame:
-    """Calculate Heat Strain Index (HSI) based on core temp and HR.
-    
-    HSI is a composite index (0-10) indicating heat stress level:
-    - 0-3: Low strain
-    - 4-6: Moderate strain  
-    - 7-10: High strain (risk of heat illness)
-    
-    FIXED: HSI formula now properly weights temperature (70%) over HR (30%)
-    as core temperature is the primary indicator of heat strain.
-    
+    """Expose the Heat Strain Index recorded by the CORE sensor as 'hsi'.
+
+    The sensor computes HSI (0-10) from estimated mean body temperature
+    (core + skin); it cannot be reproduced from core temperature and HR alone.
+    When the file has no recorded index, no substitute is invented and the
+    DataFrame is returned unchanged.
+
     Args:
-        df_pl: DataFrame with 'core_temperature_smooth' and 'heartrate_smooth'
-    
+        df_pl: DataFrame with an optional 'heat_strain_index' column
+
     Returns:
-        DataFrame with added 'hsi' column
+        Copy of the DataFrame with 'hsi' aliasing the recorded CORE index
     """
-    df = ensure_pandas(df_pl).copy()  # FIXED: copy to avoid mutation
-    core_col = 'core_temperature_smooth' if 'core_temperature_smooth' in df.columns else None
-    
-    if not core_col or 'heartrate_smooth' not in df.columns:
-        df['hsi'] = None
-        return df
-    
-    # HSI formula: weighted combination - Temperature 70%, HR 30%
-    # Temperature contribution: (CoreTemp - 37.0) / 2.5 * 7 (max 7 points)
-    # HR contribution: (HR - 60) / 120 * 3 (max 3 points)
-    df['hsi'] = (
-        (7 * (df[core_col] - 37.0) / 2.5) + 
-        (3 * (df['heartrate_smooth'] - 60.0) / 120.0)
-    ).clip(0.0, 10.0)
-    
+    df = ensure_pandas(df_pl).copy()
+
+    from modules.calculations.heat_strain import validated_hsi_series
+
+    hsi = validated_hsi_series(df)
+    if hsi is not None:
+        df['hsi'] = hsi
+
     return df
 def calculate_thermal_decay(df_pl: Union[pd.DataFrame, Any]) -> dict:
     """Calculate the thermal cost of performance as % efficiency loss per 1°C.
@@ -174,8 +164,8 @@ def predict_thermal_performance(
     tte_degraded_min = base_tte_min * (1 - tte_reduction_pct / 100)
     tte_degraded_min = max(20.0, tte_degraded_min)  # Min 20 min
     
-    # === HSI ESTIMATE ===
-    # HSI = f(temp, HR) - simplified
+    # === HEAT STRAIN ESTIMATE (model, not the CORE sensor reading) ===
+    # Simplified f(target core temp, HR); label it as a model in the UI.
     hsi_estimated = min(10, max(0, (target_temp - 37.0) / 2.5 * 5 + (hr_at_threshold - 100) / 100 * 5))
     
     # === CLASSIFICATION ===

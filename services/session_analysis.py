@@ -84,6 +84,7 @@ def calculate_extended_metrics(
     """
     # Import here to avoid circular dependency
     from modules.calculations import (
+        calculate_heat_strain_summary,
         calculate_normalized_power,
         estimate_carbs_burned,
         calculate_power_duration_curve,
@@ -138,8 +139,9 @@ def calculate_extended_metrics(
         except (ValueError, TypeError):
             metrics["vo2_max_est"] = 0
 
-    if "hsi" in df.columns:
-        metrics["max_hsi"] = df["hsi"].max()
+    hsi_summary = calculate_heat_strain_summary(df)
+    if hsi_summary:
+        metrics["max_hsi"] = hsi_summary["peak_hsi"]
 
     if "core_temperature" in df.columns:
         metrics["max_core"] = df["core_temperature"].max()

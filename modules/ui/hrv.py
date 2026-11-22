@@ -160,7 +160,7 @@ def render_hrv_tab(df_clean_pl: Any) -> None:  # noqa: C901
             legend=dict(orientation="h", y=1.05, x=0),
         )
 
-        st.plotly_chart(fig_dfa, use_container_width=True)
+        st.plotly_chart(fig_dfa, width="stretch")
 
         # Wykres RMSSD jeśli dostępny
         if "rmssd" in df_dfa.columns:
@@ -198,7 +198,7 @@ def render_hrv_tab(df_clean_pl: Any) -> None:  # noqa: C901
                 margin=dict(l=10, r=10, t=40, b=10),
                 legend=dict(orientation="h", y=1.05, x=0),
             )
-            st.plotly_chart(fig_rmssd, use_container_width=True)
+            st.plotly_chart(fig_rmssd, width="stretch")
 
         # --- WYKRES POINCARE (Lorenz Plot) ---
         st.markdown("---")
@@ -267,7 +267,7 @@ def render_hrv_tab(df_clean_pl: Any) -> None:  # noqa: C901
 
                 c_p1, c_p2 = st.columns([2, 1])
                 with c_p1:
-                    st.plotly_chart(fig_poincare, use_container_width=True)
+                    st.plotly_chart(fig_poincare, width="stretch")
                 with c_p2:
                     st.info(f"""
                     **📊 Interpretacja Kliniczna:**

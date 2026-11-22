@@ -380,8 +380,6 @@ def save_ramp_test_report(  # noqa: C901
                     "core_temperature",
                     "core_temp",
                     "core",
-                    "temperature",
-                    "temp",
                 ]:
                     if c in analysis_df.columns:
                         core_col = c

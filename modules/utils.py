@@ -51,7 +51,8 @@ def normalize_columns_pandas(df_pd: pd.DataFrame) -> pd.DataFrame:
     cols = set(df_pd.columns)  # O(1) lookup
     cols_lower = {c.lower().strip() for c in df_pd.columns}
 
-    # Pre-built reverse index: canonical -> set of aliases (module-level constant)
+    # Pre-built reverse index: canonical -> ordered aliases (module-level constant).
+    # Tuple order is the priority, so the choice does not depend on PYTHONHASHSEED.
     for canonical, aliases in _COLUMN_ALIAS_INDEX.items():
         if canonical not in cols_lower:
             # Find first matching alias
@@ -67,36 +68,45 @@ def normalize_columns_pandas(df_pd: pd.DataFrame) -> pd.DataFrame:
     return df_pd
 
 
-# Module-level constant: canonical -> set of aliases for O(1) reverse lookup
+# Module-level constant: canonical -> ordered aliases (first match wins).
 _COLUMN_ALIAS_INDEX = {
-    "heartrate": {
-        "hr",
-        "heart rate",
-        "bpm",
-        "tętno",
+    "heartrate": (
         "heartrate",
+        "heart rate",
         "heart_rate",
         "heart-rate",
-        "pulse",
         "heart_rate_bpm",
         "heartrate_bpm",
         "hr_bpm",
-    },
-    "watts": {"power", "pwr", "moc", "w", "watts", "power_w", "power_watts"},
-    "core_temperature": {"core temp", "core_temp", "temp_central", "temp", "core temperature"},
-    "skin_temperature": {"skin temp", "skin_temp", "skin temperature"},
-    "tymeventilation": {"ve", "ventilation", "vent", "tymeventilation"},
-    "tymebreathrate": {
-        "br",
-        "rr",
+        "hr",
+        "bpm",
+        "pulse",
+        "tętno",
+    ),
+    "watts": ("watts", "power", "pwr", "moc", "w", "power_w", "power_watts"),
+    "core_temperature": (
+        "core_temperature", "core temperature", "core_temp", "core temp", "temp_central",
+    ),
+    "skin_temperature": (
+        "skin_temperature", "skin temperature", "skin_temp", "skin temp",
+    ),
+    # Heat Strain Index recorded by the CORE sensor (0-10). "temp" is ambient
+    # temperature from the device, so it must never map to core temperature.
+    "heat_strain_index": (
+        "heat_strain_index", "heatstrainindex", "heat strain index", "hsi",
+    ),
+    "tymeventilation": ("tymeventilation", "ve", "ventilation", "vent"),
+    "tymebreathrate": (
+        "tymebreathrate",
         "breath rate",
         "breathing rate",
         "respiration rate",
-        "tymebreathrate",
-    },
-    "cadence": {"cad", "rpm", "cadence", "cadence_rpm"},
-    "thb": {"total_hemoglobin", "total hemoglobin", "thb"},
-    "distance": {"distance_m", "distance"},
+        "br",
+        "rr",
+    ),
+    "cadence": ("cadence", "cad", "rpm", "cadence_rpm"),
+    "thb": ("thb", "total_hemoglobin", "total hemoglobin"),
+    "distance": ("distance", "distance_m"),
 }
 
 
@@ -180,6 +190,7 @@ def _convert_numeric_types(df: pd.DataFrame) -> pd.DataFrame:
         "torque",
         "core_temperature",
         "skin_temperature",
+        "heat_strain_index",
         "velocity_smooth",
         "tymebreathrate",
         "tymeventilation",

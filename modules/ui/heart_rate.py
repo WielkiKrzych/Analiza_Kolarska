@@ -138,4 +138,4 @@ def render_hr_tab(df):  # noqa: C901
         showlegend=False
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

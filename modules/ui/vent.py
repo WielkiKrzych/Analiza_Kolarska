@@ -273,7 +273,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
         # Wykres z interaktywnym zaznaczaniem
         selected = st.plotly_chart(
             fig_vent,
-            use_container_width=True,
+            width="stretch",
             key="vent_chart",
             on_select="rerun",
             selection_mode="box",
@@ -447,7 +447,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                 # Interactive chart
                 selected_br = st.plotly_chart(
                     fig_br,
-                    use_container_width=True,
+                    width="stretch",
                     key="br_chart",
                     on_select="rerun",
                     selection_mode="box",
@@ -633,7 +633,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                 # Interactive chart
                 selected_tv = st.plotly_chart(
                     fig_tv,
-                    use_container_width=True,
+                    width="stretch",
                     key="tv_chart",
                     on_select="rerun",
                     selection_mode="box",
@@ -695,7 +695,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                     height=400,
                     hovermode="closest",
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, width="stretch")
 
             # Breathing Rate Visualization
             if "tymebreathrate" in interval_data.columns:
@@ -724,7 +724,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                     height=300,
                     hovermode="x unified",
                 )
-                st.plotly_chart(fig_br, use_container_width=True)
+                st.plotly_chart(fig_br, width="stretch")
 
             # Minute Ventilation Chart
             st.subheader("Wentylacja Minutowa (VE)")
@@ -752,7 +752,7 @@ def render_vent_tab(target_df, training_notes, uploaded_file_name):  # noqa: C90
                 height=300,
                 hovermode="x unified",
             )
-            st.plotly_chart(fig_ve, use_container_width=True)
+            st.plotly_chart(fig_ve, width="stretch")
 
     else:
         st.warning("Brak danych w wybranym zakresie.")

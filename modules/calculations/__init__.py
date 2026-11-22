@@ -14,7 +14,6 @@ Ten pakiet grupuje funkcje obliczeniowe według odpowiedzialności:
 - data_processing.py: Przetwarzanie danych
 - async_runner.py: Async calculation wrappers
 - polars_adapter.py: Polars/Pandas interoperability
-- repeatability.py: Repeatability and stability analysis
 - quality.py: Data reliability checks
 - interpretation.py: Training advice generation
 
@@ -92,29 +91,11 @@ from .stamina import (
 # Phase 1.3 — do not fall back to the simplified stamina.py variants.
 from .durability import (
     calculate_durability_index,
-    calculate_durability_by_season,
     get_durability_interpretation,
-    get_durability_recommendations,
-)
-
-from .w_prime_reconstitution import (
-    compute_w_prime_reconstitution_map,
-    build_reconstitution_table,
-    get_reconstitution_interpretation,
-    ReconstitutionEvent,
-    ReconstitutionSummary,
 )
 
 from .w_prime import (
     calculate_w_prime_biexp,
-)
-
-from .race_predictor import (
-    predict_race_power,
-    predict_race_duration,
-    generate_race_predictions_table,
-    get_pacing_recommendations,
-    RacePrediction,
 )
 
 from .training_distribution import (
@@ -127,7 +108,6 @@ from .training_distribution import (
 )
 
 from .heat_strain import (
-    calculate_heat_strain_index_enhanced,
     calculate_heat_strain_summary,
     generate_heat_strain_recommendations,
     get_heat_strain_color_mapping,
@@ -157,18 +137,6 @@ from .smo2_analysis import (
 from .plateau_detector import (
     detect_plateau,
     PlateauResult,
-)
-
-from .alert_engine import (
-    Alert,
-    OvertrainingRiskIndex,
-    AlertReport,
-    detect_cardiac_drift,
-    detect_smo2_crash,
-    detect_hrv_suppression,
-    detect_performance_trend_decline,
-    calculate_overtraining_risk,
-    analyze_session_alerts,
 )
 
 from .smo2 import (
@@ -209,14 +177,6 @@ from .threshold_types import (
     StepTestResult,
     HysteresisResult,
     SensitivityResult,
-)
-
-from .repeatability import (
-    calculate_cv,
-    calculate_sem,
-    classify_reproducibility,
-    calculate_repeatability_metrics,
-    compare_session_to_baseline,
 )
 
 from .quality import (
@@ -322,12 +282,6 @@ __all__ = [
     "StepTestResult",
     "HysteresisResult",
     "SensitivityResult",
-    # Repeatability
-    "calculate_cv",
-    "calculate_sem",
-    "classify_reproducibility",
-    "calculate_repeatability_metrics",
-    "compare_session_to_baseline",
     # Quality
     "check_signal_quality",
     "check_step_test_protocol",

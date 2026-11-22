@@ -101,7 +101,8 @@ def prepare_session_record(
     metrics: Dict[str, Any],
     np_header: float,
     if_header: float,
-    tss_header: float
+    tss_header: float,
+    file_hash: str = "",
 ) -> Dict[str, Any]:
     """Prepare session data for database storage."""
     # Local import: modules.history_import imports services, so a top-level import is circular.
@@ -120,6 +121,9 @@ def prepare_session_record(
     return {
         'date': extract_date_from_filename(filename) or date.today().isoformat(),
         'filename': filename,
+        # Content hash: two different files with the same name must not overwrite
+        # each other's stored session.
+        'file_hash': file_hash,
         'duration_sec': len(df_plot),
         'tss': tss_header,
         'np': np_header,

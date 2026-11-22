@@ -57,8 +57,8 @@ def generate_thermal_chart(
 
     # Resolve columns
     df = source_df.copy()
-    temp_col = _find_column(df, ['core_temperature_smooth', 'core_temperature', 'core_temp', 'temp', 'temperature'])
-    hsi_col = _find_column(df, ['hsi', 'heat_strain_index', 'HeatStrainIndex', 'heatstrainindex'])
+    temp_col = _find_column(df, ['core_temperature_smooth', 'core_temperature', 'core_temp'])
+    hsi_col = _find_column(df, ['heat_strain_index', 'HeatStrainIndex', 'heatstrainindex', 'hsi'])
     time_col = _find_column(df, ['time_min', 'time'])
     
     if not temp_col or not hsi_col:

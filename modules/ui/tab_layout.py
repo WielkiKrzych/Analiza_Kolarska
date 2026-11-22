@@ -5,7 +5,6 @@ st.tabs computes the content of every tab on every rerun (Streamlit 1.54 docs), 
 dashboard selects a group and a tab with segmented controls and renders only that tab.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -14,8 +13,6 @@ import streamlit as st
 
 from modules.frontend.components import UIComponents
 from modules.ui.tab_config import render_tab_content
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -82,27 +79,6 @@ class TabGroup:
     tabs: tuple
 
 
-def _alert_report(c: SessionContext):
-    """Physiological alert report — needs 90 days of history, so built only for the Alerts tab."""
-    from modules.calculations.alert_engine import AlertReport, analyze_session_alerts
-    from modules.cache_utils import get_session_store
-
-    try:
-        history = [
-            {
-                "date": r.date,
-                "avg_rmssd": r.avg_rmssd,
-                "session_type": getattr(r, "session_type", None),
-                "tss": r.tss,
-            }
-            for r in get_session_store().get_sessions(days=90)
-        ]
-        return analyze_session_alerts(c.df_plot, c.metrics, session_history=history)
-    except (ImportError, ValueError, KeyError, TypeError) as e:
-        logger.warning(f"Alert engine failed: {e}")
-        return AlertReport()
-
-
 def _perf_args(c: SessionContext) -> tuple:
     return (c.df_plot, c.df_plot_resampled, c.metrics, c.rider_weight, c.cp, c.w_prime)
 
@@ -116,11 +92,8 @@ TAB_GROUPS = (
         Tab("📊 Podsumowanie", "summary", lambda c: (
             c.df_plot, c.df_plot_resampled, c.metrics, c.training_notes, c.file_name,
             c.cp, c.w_prime, c.rider_weight, c.vt1_watts, c.vt2_watts,
-            c.vt1_watts, c.vt2_watts,  # LT1/LT2 proxies: VT1 ≈ LT1, VT2 ≈ LT2
+            None, None,  # no LT1/LT2 input — Summary falls back to its own SmO2 detection
         )),
-        Tab("📅 Load (PMC)", "load"),
-        Tab("🔀 Compare", "compare"),
-        Tab("📈 Moc w czasie", "power_trends"),
     )),
     TabGroup("⚡ Performance", (
         Tab("🔋 Power", "power", lambda c: (
@@ -133,17 +106,16 @@ TAB_GROUPS = (
         Tab("🧬 Hematology", "hemo", lambda c: (c.df_plot,)),
         Tab("📈 Drift Maps", "drift_maps", lambda c: (c.df_plot,)),
         Tab("⏱️ TTE", "tte", lambda c: (c.df_plot, c.cp, c.file_name)),
-        Tab("🔗 W'bal Recon", "w_prime_reconstitution", _perf_args),
-        Tab("🛡️ Durability", "durability", _perf_args),
+        Tab("📈 Moc w czasie", "power_trends"),
     )),
     TabGroup("🧠 Intelligence", (
         Tab("🍎 Nutrition", "nutrition", lambda c: (c.df_plot, c.cp, c.vt1_watts, c.vt2_watts)),
-        Tab("🚧 Limiters", "limiters", lambda c: (c.df_plot, c.cp, c.vt2_vent)),
-        Tab("🏁 Race Predictor", "race_predictor", _perf_args),
         Tab("📊 Training Distribution", "training_distribution", _perf_args),
         Tab("🔁 Intervals", "intervals", lambda c: (
             c.df_plot, c.df_plot_resampled, c.cp, c.rider_weight, c.rider_age, c.is_male,
         )),
+        Tab("🍎 Fueling", "fueling", lambda c: (c.df_plot_resampled, c.cp)),
+        Tab("🤖 AI Coach", "ai_coach", lambda c: (c.df_plot_resampled, c.cp)),
     )),
     TabGroup("🫀 Physiology", (
         Tab("💓 HRV", "hrv", lambda c: (c.df_raw,)),
@@ -154,38 +126,7 @@ TAB_GROUPS = (
             *_perf_args(c), c.params.get("hr_max"), c.params.get("hr_rest"),
             c.rider_age, c.is_male,
         )),
-        Tab("🚨 Alerts", "alerts", lambda c: (_alert_report(c),)),
-        Tab("🩸 Progi SmO2", "smo2_thresholds", lambda c: (
-            c.df_plot, c.training_notes, c.file_name, c.cp,
-        )),
-        Tab("🩸 Progi SmO2 (manual)", "smo2_manual", lambda c: (
-            c.df_plot, c.training_notes, c.file_name, c.cp,
-        )),
-    )),
-    TabGroup("🚴 Cycling", (
-        Tab("🎯 MPA", "mpa", lambda c: (c.df_plot, c.cp, c.w_prime)),
-        Tab("🧪 VLaMax", "vlamax", lambda c: (c.df_plot, c.cp, c.w_prime, c.rider_weight)),
         Tab("♻️ Aerobic Efficiency", "aerobic_efficiency", lambda c: (c.df_plot, c.cp)),
-        Tab("📈 Training Impact", "training_impact", lambda c: (c.df_plot, c.cp, c.w_prime)),
-        Tab("🗓️ Banister", "banister"),
-        Tab("📅 Periodization", "periodization"),
-    )),
-    TabGroup("🔬 Fizjologia (TD)", (
-        Tab("📉 DFA Longitudinal", "dfa_longitudinal", lambda c: (c.df_plot,)),
-        Tab("🩸 SmO2 Longitudinal", "smo2_longitudinal", lambda c: (c.df_plot, c.cp)),
-        Tab("🛠️ Manual Thresholds", "manual_thresholds", lambda c: (
-            c.df_plot, c.training_notes, c.file_name, c.cp, c.params.get("hr_max"),
-        )),
-        Tab("🫁 Vent Thresholds (CPET)", "vent_thresholds", lambda c: (
-            c.df_plot, c.training_notes, c.file_name, c.cp,
-        )),
-        Tab("💓 HRV Readiness", "hrv_readiness", lambda c: (c.df_plot,)),
-        Tab("😴 Sleep Recovery", "sleep_recovery"),
-        Tab("🍎 Fueling", "fueling", lambda c: (c.df_plot_resampled, c.cp)),
-        Tab("🤖 AI Coach", "ai_coach", lambda c: (c.df_plot_resampled, c.cp)),
-    )),
-    TabGroup("🌐 Intervals.icu", (
-        Tab("🌐 Intervals.icu", "intervals_icu"),
     )),
 )
 

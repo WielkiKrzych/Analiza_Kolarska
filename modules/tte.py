@@ -217,14 +217,22 @@ def get_tte_history_from_db(days: int = 90, target_pct: float = 100.0) -> List[D
     return history
 
 
-def save_tte_to_db(filename: str, session_date: str, target_pct: float, tte_seconds: int) -> bool:
-    """Save/Update TTE value in the session's extra_metrics.
+def save_tte_to_db(
+    filename: str,
+    session_date: str,
+    target_pct: float,
+    tte_seconds: int,
+    file_hash: str = "",
+) -> bool:
+    """Save/Update TTE value in one session's extra_metrics.
 
     Args:
-        filename: Session filename (unique identifier with date)
+        filename: Session filename (identifier with date for legacy rows)
         session_date: Session date string (YYYY-MM-DD)
         target_pct: FTP percentage
         tte_seconds: Computed TTE
+        file_hash: Content hash of the uploaded file, when available; preferred
+            over (filename, date) so a same-named file is not updated by mistake.
 
     Returns:
         Success boolean
@@ -233,11 +241,19 @@ def save_tte_to_db(filename: str, session_date: str, target_pct: float, tte_seco
     try:
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
-            # 1. Get existing extra_metrics
-            cursor = conn.execute(
-                "SELECT extra_metrics FROM sessions WHERE filename = ? AND date = ?",
-                (filename, session_date),
-            )
+            # 1. Pick exactly one row: hash is the identity, filename+date is legacy.
+            if file_hash:
+                cursor = conn.execute(
+                    "SELECT id, extra_metrics FROM sessions WHERE file_hash = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (file_hash,),
+                )
+            else:
+                cursor = conn.execute(
+                    "SELECT id, extra_metrics FROM sessions WHERE filename = ? AND date = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (filename, session_date),
+                )
             row = cursor.fetchone()
             if not row:
                 return False
@@ -249,10 +265,10 @@ def save_tte_to_db(filename: str, session_date: str, target_pct: float, tte_seco
             # Save for specific target_pct
             extra["tte"][str(int(target_pct))] = tte_seconds
 
-            # 2. Update DB
+            # 2. Update only the selected row, never every row of the pair.
             conn.execute(
-                "UPDATE sessions SET extra_metrics = ? WHERE filename = ? AND date = ?",
-                (json.dumps(extra), filename, session_date),
+                "UPDATE sessions SET extra_metrics = ? WHERE id = ?",
+                (json.dumps(extra), row["id"]),
             )
             conn.commit()
             return True
