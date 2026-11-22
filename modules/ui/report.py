@@ -3,7 +3,11 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from modules.config import Config
-from modules.calculations import calculate_vo2max, calculate_trend
+from modules.calculations import (
+    calculate_heat_strain_summary,
+    calculate_trend,
+    calculate_vo2max,
+)
 from typing import Dict
 
 # ============================================================
@@ -118,8 +122,13 @@ def render_report_tab(  # noqa: C901
     )
     c10.metric("Dryf Z2", f"{drift_z2:.1f} %", delta_color="inverse" if drift_z2 < 5 else "normal")
 
-    max_hsi = df_plot["hsi"].max() if "hsi" in df_plot.columns else 0
-    c11.metric("Max HSI", f"{max_hsi:.1f}", delta_color="normal" if max_hsi > 5 else "inverse")
+    hsi_summary = calculate_heat_strain_summary(df_plot)
+    peak_hsi = hsi_summary["peak_hsi"] if hsi_summary else None
+    c11.metric(
+        "Max HSI",
+        f"{peak_hsi:.1f}" if peak_hsi is not None else "brak",
+        delta_color="normal" if peak_hsi is None or peak_hsi > 5 else "inverse",
+    )
     c12.metric("Oddechy (RR)", f"{metrics.get('avg_rr', 0):.1f} /min")
 
     st.markdown("---")
@@ -198,7 +207,7 @@ def render_report_tab(  # noqa: C901
         legend=dict(orientation="h", y=1.05, x=0),
         hovermode="x unified",
     )
-    st.plotly_chart(fig_exec, use_container_width=True)
+    st.plotly_chart(fig_exec, width="stretch")
 
     st.markdown("---")
     col_dist1, col_dist2 = st.columns(2)
@@ -231,7 +240,7 @@ def render_report_tab(  # noqa: C901
                 yaxis=dict(showgrid=False),
                 margin=dict(t=20, b=20),
             )
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, width="stretch")
 
     with col_dist2:
         st.subheader("Rozkład Tętna")
@@ -264,7 +273,7 @@ def render_report_tab(  # noqa: C901
                     bargap=0.1,
                     margin=dict(t=20, b=20),
                 )
-                st.plotly_chart(fig_hr, use_container_width=True)
+                st.plotly_chart(fig_hr, width="stretch")
 
     st.markdown("---")
     c_bot1, c_bot2 = st.columns(2)
@@ -352,7 +361,7 @@ def render_report_tab(  # noqa: C901
             ),
             legend=dict(orientation="h", y=1.1, x=0),
         )
-        st.plotly_chart(fig_dec, use_container_width=True)
+        st.plotly_chart(fig_dec, width="stretch")
 
         st.info("""
         **💡 Interpretacja: Fizjologia Zmęczenia (Triada: Moc - HR - SmO2)**
@@ -431,7 +440,7 @@ def render_report_tab(  # noqa: C901
                 margin=dict(l=10, r=10, t=40, b=10),
                 height=400,
             )
-            st.plotly_chart(fig_s, use_container_width=True)
+            st.plotly_chart(fig_s, width="stretch")
 
             st.info("""
             **💡 Hemodynamika Mięśniowa (SmO2) - Lokalny Monitoring:**
@@ -466,7 +475,7 @@ def render_report_tab(  # noqa: C901
             margin=dict(l=10, r=10, t=40, b=10),
             height=400,
         )
-        st.plotly_chart(fig_h, use_container_width=True)
+        st.plotly_chart(fig_h, width="stretch")
 
         st.info("""
         **💡 Reakcja Sercowo-Naczyniowa (HR) - Globalny System:**
@@ -552,7 +561,7 @@ def render_report_tab(  # noqa: C901
         margin=dict(l=10, r=10, t=40, b=10),
         height=450,
     )
-    st.plotly_chart(fig_v, use_container_width=True)
+    st.plotly_chart(fig_v, width="stretch")
 
     st.info("""
     **💡 Interpretacja: Mechanika Oddychania**

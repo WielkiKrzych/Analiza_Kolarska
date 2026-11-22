@@ -46,8 +46,8 @@ def generate_summary_pdf(  # noqa: C901
     rider_weight: float,
     vt1_watts: int,
     vt2_watts: int,
-    lt1_watts: int,
-    lt2_watts: int,
+    lt1_watts: Optional[int],
+    lt2_watts: Optional[int],
     threshold_result: Any,
     smo2_result: Any,
     uploaded_file_name: str,
@@ -353,6 +353,12 @@ def generate_summary_pdf(  # noqa: C901
         ["Próg", "Moc", "HR", "SmO2"],
     ]
 
+    # The caller may pass no LT values; fall back to the SmO2 detection.
+    if not lt1_watts or lt1_watts <= 0:
+        lt1_watts = getattr(smo2_result, "t1_watts", 0) or 0
+    if not lt2_watts or lt2_watts <= 0:
+        lt2_watts = getattr(smo2_result, "t2_onset_watts", 0) or 0
+
     # Get LT1 values from smo2_result
     if smo2_result:
         lt1_hr = getattr(smo2_result, "t1_hr", 0) or 0
@@ -365,7 +371,7 @@ def generate_summary_pdf(  # noqa: C901
     lt_data.append(
         [
             "LT1 (SteadyState)",
-            f"{lt1_watts} W",
+            f"{lt1_watts:.0f} W" if lt1_watts > 0 else "Nie wykryto",
             f"{lt1_hr:.0f} bpm" if lt1_hr else "-",
             f"{lt1_smo2:.1f}%" if lt1_smo2 else "-",
         ]
@@ -374,7 +380,7 @@ def generate_summary_pdf(  # noqa: C901
     lt_data.append(
         [
             "LT2 (RCP)",
-            f"{lt2_watts} W" if lt2_watts > 0 else "Nie wykryto",
+            f"{lt2_watts:.0f} W" if lt2_watts > 0 else "Nie wykryto",
             f"{lt2_hr:.0f} bpm" if lt2_hr else "-",
             f"{lt2_smo2:.1f}%" if lt2_smo2 else "-",
         ]

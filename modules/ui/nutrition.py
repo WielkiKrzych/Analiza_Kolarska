@@ -116,7 +116,7 @@ def render_nutrition_tab(df_plot, cp_input, vt1_watts, vt2_watts):
             height=400,
             showlegend=False
         )
-        st.plotly_chart(fig_nutri, use_container_width=True)
+        st.plotly_chart(fig_nutri, width="stretch")
         
         # --- WYKRES 2: TEMPO SPALANIA (BURN RATE) ---
         st.subheader("🔥 Tempo Spalania (Burn Rate)")
@@ -149,7 +149,7 @@ def render_nutrition_tab(df_plot, cp_input, vt1_watts, vt2_watts):
             height=400,
             showlegend=False
         )
-        st.plotly_chart(fig_burn, use_container_width=True)
+        st.plotly_chart(fig_burn, width="stretch")
 
         # PODSUMOWANIE LICZBOWE
         total_burn = cumulative_burn.iloc[-1]

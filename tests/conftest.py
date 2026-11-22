@@ -157,3 +157,28 @@ def boundary_df():
         'watts': [199, 200, 201, 300], # Around VT1=200
         'heartrate': [160] * 4
     })
+
+
+@pytest.fixture
+def synthetic_ramp_df():
+    """Step test: 10 × 3 min steps (100→370 W) with VE, BR, HR, SmO2, core temperature."""
+    rng = np.random.default_rng(7)
+    step_sec, n_steps = 180, 10
+    n = step_sec * n_steps
+    t = np.arange(n, dtype=float)
+    watts = 100.0 + 30.0 * (t // step_sec)
+    intensity = (watts - 100.0) / 270.0
+
+    return pd.DataFrame({
+        'time': t,
+        'watts': watts + rng.normal(0, 3, n),
+        'heartrate': 95 + 85 * intensity + rng.normal(0, 1.5, n),
+        'cadence': rng.normal(90, 3, n),
+        'smo2': 72 - 45 * intensity ** 1.6 + rng.normal(0, 1.0, n),
+        'thb': 12.5 + rng.normal(0, 0.1, n),
+        'tymeventilation': 25 + 20 * intensity + 90 * np.clip(intensity - 0.55, 0, None) ** 1.5
+        + rng.normal(0, 1.2, n),
+        'tymebreathrate': 20 + 25 * intensity + rng.normal(0, 1.0, n),
+        'core_temperature': 37.1 + 1.4 * t / n + rng.normal(0, 0.02, n),
+        'skin_temperature': 33.0 + 1.5 * t / n,
+    })

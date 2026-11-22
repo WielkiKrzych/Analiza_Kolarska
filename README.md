@@ -40,8 +40,8 @@ na rowerze. Wczytujesz plik z treningu lub testu (CSV / TXT), a aplikacja:
 - **wykrywa progi** wentylacyjne (VT1/VT2) i mięśniowe (SmO2) — jako *zakresy z pewnością detekcji*, nie pojedyncze punkty,
 - **modeluje moc** (CP / W′, krzywa mocy, W′ balance i rekonstytucja),
 - **ocenia fizjologię** (HRV, hemodynamika, wentylacja, obciążenie cieplne),
-- **planuje i prognozuje** (predykcja mocy wyścigowej, periodyzacja, model Banistera, VLaMax),
-- **eksportuje** wyniki (FIT / TCX / CSV) i generuje raporty.
+- **śledzi historię** (sesje w SQLite, trendy krzywej mocy),
+- **generuje raport PDF** z podsumowania sesji.
 
 > 💡 Wszystkie wykresy są interaktywne (Plotly) — z zoomem, hover i zaznaczaniem przeciągnięciem (box-select).
 
@@ -49,7 +49,7 @@ na rowerze. Wczytujesz plik z treningu lub testu (CSV / TXT), a aplikacja:
 
 ## 🗺️ Mapa zakładek
 
-Interfejs dzieli się na **siedem grup**:
+Interfejs dzieli się na **cztery grupy**:
 
 ### 📊 Overview
 | Zakładka | Zawartość |
@@ -67,57 +67,26 @@ Interfejs dzieli się na **siedem grup**:
 | 🧬 Hematology | THb, Hct, estymacje hemodynamiczne |
 | 📈 Drift Maps | Mapy dryfu fizjologicznego |
 | ⏱️ TTE | Time To Exhaustion na zadanej intensywności |
-| 🔗 W′bal Recon | Mapa wyczerpania/odnowy W′, cykle regeneracji (Caen 2021) |
-| 🛡️ Durability | Durability Index, analiza sezonowa, rekomendacje |
+| 📈 Moc w czasie | Trend krzywej mocy (MMP) między sesjami |
 
 ### 🧠 Intelligence
 | Zakładka | Opis |
 |---|---|
 | 🍎 Nutrition | Estymacja spalania kalorii / węglowodanów |
-| 🚧 Limiters | Identyfikacja ograniczników wydolności |
-| 🏁 Race Predictor | Predykcja mocy na zawody z korektami wiatr / temperatura / trasa |
 | 📊 Training Distribution | Time-in-Zone (power / HR / SmO2), balance score |
+| 🔁 Intervals | Pulse Power, Gross Efficiency, interwały w sesji |
+| 🍎 Fueling | Strategia żywieniowa wysiłkowa |
+| 🤖 AI Coach | Rekomendacje treningowe wspierane AI |
 
 ### 🫀 Physiology
 | Zakładka | Opis |
 |---|---|
-| 💓 HRV | RMSSD, pNN50, DFA-α1 |
+| 💓 HRV | RMSSD, pNN50 |
 | 🩸 SmO2 | Saturacja mięśniowa, dekonwolucja, progi |
 | 🫁 Ventilation | VT1, VT2, RER, breathing power |
 | 🌡️ Thermal | Temperatura centralna/peryferyjna |
-| 🔥 Heat Strain | PSI/HSI z korektami środowiskowymi, ocena ryzyka |
-
-### 🚴 Cycling
-| Zakładka | Opis |
-|---|---|
-| 🎯 MPA | Modeled Power Availability (dostępna moc z W′bal) |
-| 🧪 VLaMax | Profil beztlenowy, wkład systemów energetycznych |
+| 🔥 Heat Strain | Prezentacja HSI zarejestrowanego przez sensor CORE (bez PSI i korekt środowiskowych) |
 | ♻️ Aerobic Efficiency | Efektywność tlenowa i jej trend w czasie |
-| 📈 Training Impact | Wpływ treningu, klasyfikacja intensywności |
-| 🗓️ Banister | Model fitness–fatigue, prognoza formy, okna szczytu |
-| 📅 Periodization | Bloki treningowe, plan tygodniowy, PMC (CTL/ATL/TSB) |
-
-### 🔬 Fizjologia (TD)
-| Zakładka | Opis |
-|---|---|
-| 📉 DFA Longitudinal | DFA-α1 w czasie, dekompensacja autonomiczna |
-| 🩸 SmO₂ Longitudinal | Trend nasycenia mięśniowego w czasie |
-| 🛠️ Manual Thresholds | Ręczne ustawienie progów wentylacyjnych / mięśniowych |
-| 🫁 Vent Thresholds (CPET) | Analiza progów z danych CPET |
-| 💓 HRV Readiness | Gotowość na podstawie HRV |
-| 😴 Sleep Recovery | Regeneracja i sen |
-| 🍎 Fueling | Strategia żywieniowa wysiłkowa |
-| 🤖 AI Coach | Rekomendacje treningowe wspierane AI |
-
-### 🌐 Intervals.icu
-| Zakładka | Opis |
-|---|---|
-| 🏥 Wellness → Wydajność | Korelacja wellness i wydajności (API) |
-| 📈 Progresja Mocy | Krzywe mocy w czasie (API) |
-| 📋 Compliance | Zgodność z planem treningowym (API) |
-| 🔍 Interwały | Progresja interwałów między aktywnościami (API) |
-| 🏁 Race Readiness | Gotowość startowa (API) |
-| 🌡️ Heat Adapt | Adaptacja do ciepła (API) |
 
 ---
 
@@ -141,8 +110,7 @@ Aplikacja wystartuje na `http://localhost:8501` (lub `8502`, jeśli uruchamiasz 
 
 **Wymagania:** Python 3.10+, zależności z `pyproject.toml`.
 
-**Konfiguracja (`.env`):** skopiuj `.env.example` do `.env`. Zakładka **Intervals.icu**
-wymaga `INTERVALS_ICU_API_KEY` oraz `INTERVALS_ICU_ATHLETE_ID`. Raporty PDF zapisują
+**Konfiguracja (`.env`):** skopiuj `.env.example` do `.env`. Raporty PDF zapisują
 się do katalogu z `REPORTS_DIR` (domyślnie `reports/ramp_tests`).
 
 ---
@@ -177,19 +145,19 @@ Po zbudowaniu przeciągnij aplikację z `/Applications` na Dock. Log startu: `/t
 │                    Streamlit + TabRegistry                     │
 └───────────────┬──────────────────────────────────────────────┘
                 │
-   ┌────────────┼────────────┬────────────┬────────────┐
-   ▼            ▼            ▼            ▼            ▼
- 📊 Overview  ⚡ Perf.   🧠 Intel.   🫀 Physio.   🚴 Cycling
-   └────────────┴────────────┴────────────┴────────────┘
+   ┌────────────┼────────────┬────────────┐
+   ▼            ▼            ▼            ▼
+ 📊 Overview  ⚡ Perf.   🧠 Intel.   🫀 Physio.
+   └────────────┴────────────┴────────────┘
                 │
                 ▼
         🧮  modules/calculations/      ← NumPy · SciPy · Numba
-        (moc, W′, progi, SmO2, HRV, termika, VLaMax, Banister…)
+        (moc, W′, progi, SmO2, HRV, termika, wentylacja…)
                 │
-   ┌────────────┼────────────┐
-   ▼            ▼            ▼
- 💾 db/       📈 reporting/   📤 export/
- SQLite       PDF / figures   FIT · TCX · CSV
+   ┌────────────┴────────────┐
+   ▼                         ▼
+ 💾 db/                    📈 reporting/
+ SQLite                    PDF / figures
 ```
 
 ---
@@ -206,15 +174,13 @@ Analiza_Kolarska/
 │
 ├── modules/
 │   ├── calculations/          🧮 Silnik obliczeniowy
-│   │   ├── power.py · w_prime.py · w_prime_reconstitution.py
-│   │   ├── mpa.py · vlamax_profile.py · aerobic_efficiency.py
-│   │   ├── banister.py · pmc.py · periodization.py · training_impact.py
-│   │   ├── race_predictor.py · training_distribution.py · durability.py
-│   │   ├── thresholds.py · ventilatory.py · smo2/ · heat_strain.py · hrv.py …
+│   │   ├── power.py · w_prime.py · stamina.py · metrics.py
+│   │   ├── aerobic_efficiency.py · training_distribution.py · durability.py
+│   │   ├── thresholds.py · ventilatory.py
+│   │   ├── smo2/ · heat_strain.py · thermal.py · hrv.py …
 │   ├── ui/                     🎨 Zakładki interfejsu (+ shared.py: chart/metric)
-│   ├── db/                     💾 SQLite: sesje + profile zawodnika
-│   ├── reporting/              📈 Raporty PDF i figury
-│   └── export/                 📤 FIT / TCX / CSV
+│   ├── db/                     💾 SQLite: sesje
+│   └── reporting/              📈 Raporty PDF i figury
 │
 ├── services/                  🔄 Orkiestracja analizy sesji
 ├── models/ · signals/         📋 Modele danych · przetwarzanie sygnałów
@@ -266,21 +232,20 @@ Realizacja planu portowania `PLAN_Portowanie_Kolarstwa.md` — kompletny przenos
 obliczeń i interfejsu z *Tri_Dashboard* do *Analiza Kolarska*:
 
 **Silnik obliczeniowy (WS1–WS3)**
-- Moduły mocy, SmO₂, termiki, VLaMax, Banistera, periodyzacji, DFA/HRV/sleep/fueling w `modules/calculations/`.
+- Moduły obliczeniowe mocy, SmO₂, termiki, wentylacji, HRV i fueling w `modules/calculations/`.
 - Typy domenowe: `session_type`, `threshold_types`, `data_quality`, `threshold_crosscheck`.
 - Rura analizy sesji (`pipeline.py`) i wspólny `common.py`.
 - Backup SQLite (`backup.py`) + walidacja jakości (`validation.py`, klucze `RAMP_*` w `Config`).
 
 **Interfejs (WS6 + WS4)**
-- Nowa grupa **🔬 Fizjologia (TD)** — 8 zakładek (DFA Longitudinal, SmO₂ Longitudinal, Manual Thresholds, Vent Thresholds CPET, HRV Readiness, Sleep Recovery, Fueling, AI Coach).
-- Przywrócona integracja **🌐 Intervals.icu** — nowy pakiet `modules/intervals_icu/` (client API + compliance, heat_adaptation, interval_progression, power_progression, race_readiness, wellness_performance) i zakładka z 6 widokami.
+- Zakładki zorganizowane w grupy: Overview, Performance, Intelligence, Physiology.
 
 **Raporty PDF (WS5)**
 - Uzupełnione brakujące moduły `modules/reporting/` (generator raportów rampowych, karty, metaboliczne, cardio/vent, HRV/thermal, SmO₂).
 - Wyjście raportów sterowane przez `REPORTS_DIR` (env).
 
 **Konfiguracja**
-- Dodano `.env.example` (klucze `INTERVALS_ICU_*`, `OPENAI_API_KEY`, `REPORTS_DIR`).
+- Dodano `.env.example` (klucze `OPENAI_API_KEY`, `REPORTS_DIR`).
 
 **Testy:** 299 passed, 0 regresji (o +46 vs v0.6.0).
 
@@ -291,10 +256,7 @@ obliczeń i interfejsu z *Tri_Dashboard* do *Analiza Kolarska*:
 - `thresholds.py` — przywrócone obliczanie **histerezy** i **wrażliwości** VT w `analyze_step_test` (regres migracyjny).
 - `shared.py` — `chart()` z trybem **box-select** (zaznaczanie przeciągnięciem jak w Tri); `metric()` bez `delta_color=None`.
 
-**Nowa grupa 🚴 Cycling (6 zakładek)** — MPA, VLaMax, Aerobic Efficiency, Training Impact, Banister, Periodization
-(+ moduły `mpa`, `vlamax_profile`, `aerobic_efficiency`, `training_impact`, `banister`, `pmc`, `periodization`, `column_aliases`).
-
-**Podłączone zakładki kolarskie** — TTE, W′bal Recon, Durability, Race Predictor, Training Distribution, Heat Strain.
+**Podłączone zakładki kolarskie** — TTE, Durability, Training Distribution, Heat Strain.
 
 **Parametry domyślne** — sidebar wyrównany do Tri_Dashboard (waga 97, CP 380, W′ 15600, VT1 310, VT2 360, VT1/VT2 wentylacyjne 73/105).
 

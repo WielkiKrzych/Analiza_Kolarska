@@ -52,9 +52,6 @@ class Config:
     DB_NAME = os.getenv("DB_NAME", "training_history.db")
     REPORTS_DIR = os.getenv("REPORTS_DIR", "reports/ramp_tests")
 
-    # --- Intervals.icu API (optional, cloud training-data sync) ---
-    INTERVALS_ICU_API_KEY = os.getenv("INTERVALS_ICU_API_KEY", "")
-    INTERVALS_ICU_ATHLETE_ID = os.getenv("INTERVALS_ICU_ATHLETE_ID", "")
     DB_PATH = DATA_DIR / DB_NAME
 
     # --- UI Colors ---
@@ -77,7 +74,7 @@ class Config:
     LOWER_STEP_WEIGHT = float(os.getenv("LOWER_STEP_WEIGHT", "0.3"))
     UPPER_STEP_WEIGHT = float(os.getenv("UPPER_STEP_WEIGHT", "0.7"))
 
-    # --- Ramp-test structure validation (used by vt_cpet_steps) ---
+    # --- Ramp-test structure validation ---
     RAMP_MIN_STEP_DURATION = int(os.getenv("RAMP_MIN_STEP_DURATION", "120"))
     RAMP_POWER_INCREMENT_MIN = int(os.getenv("RAMP_POWER_INCREMENT_MIN", "15"))
     RAMP_POWER_INCREMENT_MAX = int(os.getenv("RAMP_POWER_INCREMENT_MAX", "40"))

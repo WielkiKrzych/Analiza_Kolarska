@@ -109,7 +109,7 @@ def render_fueling_tab(df_plot_resampled, cp_input):
                 "Uwagi": s.notes,
             }
         )
-    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
     # Summary totals
     total_carb = sum(s.carb_g for s in plan.plan_steps)

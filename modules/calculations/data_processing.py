@@ -14,6 +14,10 @@ from .common import ensure_pandas, WINDOW_LONG, WINDOW_SHORT
 # and will NOT be interpolated - they are preserved as NaN.
 GAP_THRESHOLD_SECONDS = 30
 
+# Recorded sensor series: zero is a valid value, so missing samples must not be
+# filled with an interpolated "measurement".
+NON_INTERPOLATED_COLUMNS = ('heat_strain_index',)
+
 
 def _detect_time_gaps(
     time_values: pd.Series, threshold: float = GAP_THRESHOLD_SECONDS
@@ -108,7 +112,10 @@ def process_data(df: Union[pd.DataFrame, Any]) -> pd.DataFrame:
     df_pd = df_pd[df_pd['time_dt'].notna()]
     df_pd = df_pd.set_index('time_dt')
 
-    num_cols = df_pd.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    num_cols = [
+        c for c in df_pd.select_dtypes(include=['float64', 'int64']).columns.tolist()
+        if c not in NON_INTERPOLATED_COLUMNS
+    ]
     if num_cols:
         df_pd[num_cols] = df_pd[num_cols].interpolate(method='linear', limit=GAP_THRESHOLD_SECONDS).ffill().bfill()
 
@@ -116,9 +123,15 @@ def process_data(df: Union[pd.DataFrame, Any]) -> pd.DataFrame:
         df_numeric = df_pd.select_dtypes(include=[np.number])
         df_resampled = df_numeric.resample('1s').mean()
         # Only interpolate small gaps — limit prevents bridging recording pauses
-        df_resampled = df_resampled.interpolate(method='linear', limit=GAP_THRESHOLD_SECONDS)
-        # Forward/backward fill only small remaining edge NaNs (up to 5s)
-        df_resampled = df_resampled.ffill(limit=5).bfill(limit=5)
+        interp_cols = [
+            c for c in df_resampled.columns if c not in NON_INTERPOLATED_COLUMNS
+        ]
+        df_resampled[interp_cols] = (
+            df_resampled[interp_cols]
+            .interpolate(method='linear', limit=GAP_THRESHOLD_SECONDS)
+            # Forward/backward fill only small remaining edge NaNs (up to 5s)
+            .ffill(limit=5).bfill(limit=5)
+        )
     except Exception as e:
         logger.warning(f"Resampling failed, using original data: {e}")
         df_resampled = df_pd

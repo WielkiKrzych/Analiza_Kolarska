@@ -41,7 +41,7 @@ def analyze_step_test(  # noqa: C901
         StepTestResult with validation_report, thresholds, and analysis notes
     """
     result = StepTestResult()
-    df.columns = df.columns.str.lower().str.strip()
+    df = df.set_axis(df.columns.str.lower().str.strip(), axis=1)
 
     has_ve = ve_column in df.columns
     has_smo2 = smo2_column in df.columns
@@ -295,7 +295,7 @@ def estimate_ftp_from_ramp(df_steps: pd.DataFrame, map_ratio: float = 0.75) -> d
     as such.
 
     Args:
-        df_steps: Per-step table from detect_vt_cpet() (needs a 'power' column)
+        df_steps: Per-step table from the step-test detector (needs a 'power' column)
         map_ratio: MAP → FTP coefficient
 
     Returns:

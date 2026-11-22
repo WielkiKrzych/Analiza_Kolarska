@@ -1,23 +1,161 @@
-"""
-Heat Strain Index Analysis tab — physiological strain visualization and recommendations.
-"""
+"""Heat Strain Index tab — the HSI recorded by the CORE sensor."""
 
-import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
+from typing import Any, Dict, Optional
+
 import pandas as pd
-import numpy as np
-from typing import Dict, Any, Optional
-from modules.config import Config
-from modules.plots import apply_chart_style, CHART_CONFIG, CHART_HEIGHT_MAIN
-from modules.ui.shared import chart, metric, require_data, alert
-from modules.ui.utils import hash_dataframe as _hash_dataframe, hash_params as _hash_params
-from modules.calculations import (
-    calculate_heat_strain_index_enhanced,
+import plotly.graph_objects as go
+import streamlit as st
+
+from modules.calculations.heat_strain import (
+    HSI_ZONE_BOUNDS,
+    HSI_ZONE_COLORS,
+    HSI_ZONE_LABELS,
+    SPARSE_SAMPLE_INTERVAL_SECONDS,
     calculate_heat_strain_summary,
+    find_hsi_column,
     generate_heat_strain_recommendations,
-    get_heat_strain_color_mapping
+    validated_hsi_series,
 )
+from modules.plots import CHART_HEIGHT_MAIN
+from modules.ui.shared import chart, require_data
+
+
+def _time_minutes(df: pd.DataFrame) -> pd.Series:
+    """Session time in minutes, from 'time_min' or 'time' (seconds)."""
+    if "time_min" in df.columns:
+        return df["time_min"]
+    if "time" in df.columns:
+        return pd.to_numeric(df["time"], errors="coerce") / 60.0
+    return pd.Series(range(len(df)), index=df.index, dtype=float) / 60.0
+
+
+def _temperature_column(df: pd.DataFrame, base: str) -> Optional[str]:
+    for name in (f"{base}_smooth", base):
+        if name in df.columns:
+            return name
+    return None
+
+
+def _render_temperature_only(df: pd.DataFrame) -> None:
+    """Fallback view: core/skin temperature without a recorded HSI."""
+    core_col = _temperature_column(df, "core_temperature")
+    skin_col = _temperature_column(df, "skin_temperature")
+    if core_col is None and skin_col is None:
+        st.caption("Brak temperatury rdzenia i skóry w pliku.")
+        return
+
+    fig = go.Figure()
+    if core_col:
+        fig.add_trace(
+            go.Scatter(
+                x=_time_minutes(df),
+                y=df[core_col],
+                mode="lines",
+                name="Temperatura rdzenia",
+                line=dict(color="#ff7f0e", width=2),
+                hovertemplate="%{y:.2f} °C<extra></extra>",
+            )
+        )
+    if skin_col:
+        fig.add_trace(
+            go.Scatter(
+                x=_time_minutes(df),
+                y=df[skin_col],
+                mode="lines",
+                name="Temperatura skóry",
+                line=dict(color="#f5b041", width=2, dash="dot"),
+                hovertemplate="%{y:.2f} °C<extra></extra>",
+            )
+        )
+    fig.update_layout(
+        template="plotly_dark",
+        title="Temperatura rdzenia i skóry",
+        xaxis_title="Czas [min]",
+        yaxis_title="Temperatura [°C]",
+        height=CHART_HEIGHT_MAIN,
+        hovermode="x unified",
+        margin=dict(l=10, r=10, t=50, b=10),
+    )
+    chart(fig, key="hsi_temperature_only")
+
+
+def _render_hsi_chart(df: pd.DataFrame, sample_interval_sec: float) -> None:
+    """HSI over session time with CORE zones and core/skin temperature."""
+    fig = go.Figure()
+    # Sparse recordings need visible points, otherwise a few samples vanish.
+    hsi_mode = (
+        "lines+markers"
+        if sample_interval_sec > SPARSE_SAMPLE_INTERVAL_SECONDS
+        else "lines"
+    )
+
+    edges = (0.0, *HSI_ZONE_BOUNDS, 10.0)
+    for low, high, color in zip(edges[:-1], edges[1:], HSI_ZONE_COLORS, strict=True):
+        fig.add_hrect(
+            y0=low,
+            y1=high,
+            fillcolor=color,
+            opacity=0.07,
+            line_width=0,
+            layer="below",
+        )
+
+    fig.add_trace(
+        go.Scatter(
+            x=_time_minutes(df),
+            y=validated_hsi_series(df),
+            mode=hsi_mode,
+            name="Heat Strain Index (CORE)",
+            line=dict(color="#d62728", width=2),
+            hovertemplate="HSI: %{y:.1f}<extra></extra>",
+        )
+    )
+
+    for base, label, color, dash in (
+        ("core_temperature", "Temperatura rdzenia", "#ff7f0e", "solid"),
+        ("skin_temperature", "Temperatura skóry", "#f5b041", "dot"),
+    ):
+        column = _temperature_column(df, base)
+        if column:
+            fig.add_trace(
+                go.Scatter(
+                    x=_time_minutes(df),
+                    y=df[column],
+                    mode="lines",
+                    name=label,
+                    yaxis="y2",
+                    line=dict(color=color, width=1.5, dash=dash),
+                    hovertemplate="%{y:.2f} °C<extra></extra>",
+                )
+            )
+
+    fig.update_layout(
+        template="plotly_dark",
+        title="Heat Strain Index z CORE na tle temperatur",
+        xaxis_title="Czas [min]",
+        yaxis=dict(title="HSI (0–10)", range=[0, 10]),
+        yaxis2=dict(title="Temperatura [°C]", overlaying="y", side="right", showgrid=False),
+        height=CHART_HEIGHT_MAIN,
+        hovermode="x unified",
+        legend=dict(orientation="h", y=1.08, x=0),
+        margin=dict(l=10, r=10, t=60, b=10),
+    )
+    chart(fig, key="hsi_timeline")
+
+
+def _render_zone_table(summary: Dict[str, Any]) -> None:
+    rows = []
+    for label in HSI_ZONE_LABELS:
+        seconds = summary.get("zone_seconds", {}).get(label, 0.0)
+        pct = summary.get("zone_pct", {}).get(label, 0.0)
+        rows.append(
+            {
+                "Strefa CORE": label,
+                "Czas [min]": round(seconds / 60.0, 1),
+                "Udział [%]": pct,
+            }
+        )
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
 
 def render_heat_strain_tab(
@@ -31,242 +169,78 @@ def render_heat_strain_tab(
     hr_rest: Optional[int] = None,
     rider_age: int = 30,
     is_male: bool = True,
-    **kwargs
+    **kwargs,
 ) -> None:
     """Render the Heat Strain Index analysis tab."""
-    
     if not require_data(df):
         return
-    
-    st.header("🌡️ Heat Strain Index (Obciążenie Cieplne)")
-    st.markdown("""
-    Analiza obciążenia cieplnego organizmu podczas wysiłku. Heat Strain Index (HSI/PSI) 
-    to skomponowany wskaźnik (0-10) łączący odpowiedź termiczną i sercowo-naczyniową 
-    do oceny ryzyka przegrzania organizmu.
-    """)
-    
-    # Calculate heat strain index
-    sex = "male" if is_male else "female"
-    hsi_df = calculate_heat_strain_index_enhanced(
-        df_pl=df,
-        resting_hr=hr_rest if hr_rest else 0.0,
-        hr_max=hr_max if hr_max else 0.0,
-        baseline_core_temp=0.0,  # Will be estimated from data
-        acclimatization_days=0,  # Default, can be configured
-        weight_kg=rider_weight,
-        height_cm=175.0,  # Default, could be parameterized
-        sex=sex,
-        clothing_factor=1.0,
-        solar_radiation=0.0,
-        wind_speed=0.0,
-        relative_humidity=50.0
+
+    st.header("🌡️ Heat Strain Index (CORE)")
+    st.markdown(
+        """
+        Heat Strain Index (HSI) to wskaźnik 0–10 liczony przez sensor CORE
+        z szacowanej średniej temperatury ciała (rdzeń + skóra).
+        Wartość 10 odpowiada rdzeniowi 40 °C i skórze 37 °C.
+        """
     )
-    
-    if 'hsi' not in hsi_df.columns or hsi_df['hsi'].isna().all():
-        st.info("ℹ️ Brak danych do obliczenia Heat Strain Index. Potrzebne dane tętna i temperatury.")
+
+    hsi_col = find_hsi_column(df)
+    if hsi_col is None:
+        st.info("Brak Heat Strain Index z CORE w pliku. Nie wyliczam zastępczego wskaźnika.")
+        _render_temperature_only(df)
         return
-    
-    # Summary statistics
-    summary = calculate_heat_strain_summary(hsi_df)
-    
-    # Main metrics
+
+    summary = calculate_heat_strain_summary(df)
+    if not summary:
+        st.info("Kolumna Heat Strain Index z CORE nie zawiera ważnych pomiarów.")
+        _render_temperature_only(df)
+        return
+
     col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        peak_hsi = summary.get('peak_hsi', 0)
-        st.metric(
-            "Szczytowy PSI",
-            f"{peak_hsi:.1f}/10",
-            help="Maksymalny Physiological Strain Index podczas treningu"
-        )
-    
-    with col2:
-        mean_hsi = summary.get('mean_hsi', 0)
-        st.metric(
-            "Średni PSI",
-            f"{mean_hsi:.1f}/10",
-            help="Średnie obciążenie cieplne podczas treningu"
-        )
-    
-    with col3:
-        risk_level = summary.get('risk_level', 'Low')
-        risk_colors = {
-            'None': '🟢',
-            'Low': '🟢',
-            'Moderate': '🟡',
-            'High': '🟠',
-            'Very High': '🔴',
-            'Extreme': '🚨'
-        }
-        st.metric(
-            "Poziom Ryzyka",
-            f"{risk_colors.get(risk_level, '⚪')} {risk_level}",
-            help="Kategoria obciążenia cieplnego"
-        )
-    
-    with col4:
-        # Time in moderate+ strain
-        strain_duration = summary.get('strain_duration', {})
-        moderate_time = strain_duration.get('Moderate', 0)
-        high_time = strain_duration.get('High', 0)
-        total_strain_time = moderate_time + high_time + strain_duration.get('Very High', 0)
-        st.metric(
-            "Czas pod Obciążeniem",
-            f"{total_strain_time:.1f}%",
-            help="Procent czasu w strefach umiarkowanego i wyższego obciążenia"
-        )
-    
-    # HSI timeline chart
-    st.subheader("📈 Przebieg Heat Strain Index w Czasie")
-    
-    fig = go.Figure()
-    
-    # Main HSI line
-    fig.add_trace(go.Scatter(
-        x=hsi_df.index,
-        y=hsi_df['hsi'],
-        mode='lines',
-        name='PSI',
-        line=dict(color=Config.COLOR_THERMAL if hasattr(Config, 'COLOR_THERMAL') else '#FF6B35', width=2),
-        hovertemplate='Czas: %{x}<br>PSI: %{y:.1f}<extra></extra>'
-    ))
-    
-    # Add threshold lines
-    fig.add_hline(y=3, line_dash="dash", line_color="green", 
-                 annotation_text="Niskie (3)", annotation_position="bottom right")
-    fig.add_hline(y=6, line_dash="dash", line_color="orange", 
-                 annotation_text="Wysokie (6)", annotation_position="bottom right")
-    fig.add_hline(y=8, line_dash="dash", line_color="red", 
-                 annotation_text="Bardzo Wysokie (8)", annotation_position="bottom right")
-    
-    fig.update_layout(
-        title="Physiological Strain Index (PSI) w czasie treningu",
-        xaxis_title="Czas treningu",
-        yaxis_title="PSI (0-10)",
-        yaxis=dict(range=[0, 10]),
-        hovermode='x unified'
+    col1.metric(
+        "Maks. HSI",
+        f"{summary['peak_hsi']:.1f}/10",
+        help="Najwyższy zarejestrowany Heat Strain Index z CORE.",
     )
-    
-    chart(fig, key="hsi_timeline")
-    
-    # Strain distribution
-    st.subheader("📊 Rozkład Obciążenia Cieplnego")
-    
-    if 'hsi_category' in hsi_df.columns:
-        category_counts = hsi_df['hsi_category'].value_counts().reset_index()
-        category_counts.columns = ['Kategoria', 'Czas (s)']
-        
-        fig_pie = go.Figure(data=[go.Pie(
-            labels=category_counts['Kategoria'],
-            values=category_counts['Czas (s)'],
-            hole=0.4,
-            marker_colors=[get_heat_strain_color_mapping().get(cat, '#CCCCCC') 
-                          for cat in category_counts['Kategoria']]
-        )])
-        
-        fig_pie.update_layout(
-            title="Procent czasu w kategoriach obciążenia cieplnego"
+    col2.metric(
+        "Średni HSI",
+        f"{summary['mean_hsi']:.1f}/10",
+        help="Średnia z zarejestrowanych pomiarów HSI.",
+    )
+    col3.metric(
+        "Czas HSI ≥ 1",
+        f"{summary['time_above_1_seconds'] / 60.0:.1f} min ({summary['time_above_1_pct']:.1f}%)",
+        help="Czas w strefie, w której zaczyna się adaptacja cieplna.",
+    )
+    col4.metric(
+        "Czas HSI ≥ 7",
+        f"{summary['time_high_seconds'] / 60.0:.1f} min ({summary['time_high_pct']:.1f}%)",
+        help="Czas w strefie wysokiej według skali CORE.",
+    )
+
+    st.subheader("📈 HSI w czasie sesji")
+    _render_hsi_chart(df, summary["sample_interval_sec"])
+
+    st.subheader("📊 Czas w strefach CORE")
+    st.caption("Strefy rozłączne — suma udziałów to 100% czasu ważnych pomiarów.")
+    _render_zone_table(summary)
+
+    st.subheader("💡 Interpretacja")
+    for recommendation in generate_heat_strain_recommendations(summary):
+        st.markdown(f"- {recommendation}")
+
+    with st.expander("📖 Skala CORE", expanded=False):
+        st.markdown(
+            """
+            | HSI | Strefa | Znaczenie |
+            | --- | --- | --- |
+            | 0–0.9 | Brak/niski | Brak bodźca adaptacji cieplnej |
+            | 1–2.9 | Niski-umiarkowany | Początek adaptacji cieplnej |
+            | 3–6.9 | Umiarkowany-wysoki | Strefa treningu cieplnego |
+            | 7+ | Wysoki | Wysokie obciążenie cieplne |
+
+            HSI liczy sensor CORE; nie da się go odtworzyć wyłącznie z temperatury
+            rdzenia i tętna. Wykres korzysta z wartości zarejestrowanej w pliku,
+            a kolumna `temp` to temperatura otoczenia, nie rdzenia.
+            """
         )
-        
-        chart(fig_pie, key="hsi_distribution")
-    
-    # Recommendations
-    st.subheader("💡 Rekomendacje")
-    recommendations = summary.get('recommendations', [])
-    for rec in recommendations:
-        st.markdown(f"- {rec}")
-    
-    # Theory section
-    with st.expander("📖 Teoria i Fizjologia Obciążenia Cieplnego", expanded=False):
-        st.markdown("""
-        ### Definicja i Znaczenie
-        
-        Heat Strain Index (HSI), znany również jako Physiological Strain Index (PSI), 
-        to skomponowany wskaźnik opracowany przez Morana i współpracowników (1998) 
-        do oceny obciążenia cieplnego organizmu podczas wysiłku fizycznego.
-        
-        ### Wzór i Obliczenia
-        
-        PSI = 5 × (Tcore_t - Tcore_0) / (39.5 - Tcore_0) + 5 × (HR_t - HR_0) / (HRmax - HR_0)
-        
-        Gdzie:
-        - Tcore_t = temperatura jądra ciała w czasie t
-        - Tcore_0 = temperatura jądra ciała w spoczynku
-        - HR_t = tętno w czasie t
-        - HR_0 = tętno w spoczynku
-        - HRmax = maksymalne tętno
-        
-        ### Interpretacja Wyników
-        
-        - **0-3**: Niskie obciążenie (brak zagrożenia)
-        - **4-6**: Umiarkowane obciążenie (monitoruj)
-        - **7-8**: Wysokie obciążenie (rozważ przerwanie)
-        - **9-10**: Bardzo wysokie / niebezpieczne
-        
-        ### Fizjologiczne Mechanizmy
-        
-        Podczas wysiłku w cieple organizm musi radzić sobie z dwoma źródłami ciepła:
-        
-        1. **Ciepło metaboliczne**: Produkowane przez pracujące mięśnie
-           - Wzrasta proporcjonalnie do intensywności wysiłku
-           - Może osiągać 15-20x więcej niż w spoczynku
-        
-        2. **Ciepło środowiskowe**: Pozyskiwane z otoczenia
-           - Wzrasta z temperaturą, wilgotnością i promieniowaniem słonecznym
-           - Zmniejsza się z prędkością wiatru i ewaporacją
-        
-        ### Strategie Termoregulacji
-        
-        Organizm stosuje kilka mechanizmów chłodzenia:
-        
-        1. **Wydzielanie potu**: Główny mechanizm chłodzenia ewaporacyjnego
-           - Maksymalna wydajność: 1-2 L/h u wytrenowanych osób
-           - Zależna od aklimatyzacji i nawodnienia
-        
-        2. **Przekrwienie skóry**: Zwiększony przepływ krwi do skóry
-           - Może osiągać 6-8 L/min u wytrenowanych osób
-           - Konkuruje z przepływem krwi do mięśni pracujących
-        
-        3. **Zmiany zachowań**: Instynktowne zmniejszanie intensywności
-           - "Pacing" termiczny - automatyczne zwalnianie tempa
-           - Zwiększona percepcja wysiłku (RPE)
-        
-        ### Czynniki Ryzyka
-        
-        - **Niska aklimatyzacja**: <10 dni ekspozycji na ciepło
-        - **Odwodnienie**: >2% utraty masy ciała
-        - **Wysoka wilgotność**: >60% RH ogranicza ewaporację
-        - **Ciąża i choroby**: Zaburzenia termoregulacji
-        - **Leki**: Diuretyki, beta-blokery, leki przeciwhistaminowe
-        
-        ### Aklimatyzacja Cieplna
-        
-        Proces adaptacji do ciepła trwa 10-14 dni i obejmuje:
-        
-        1. **Wczesne adaptacje** (dni 1-5):
-           - Zwiększona objętość osocza (10-15%)
-           - Wcześniejsze rozpoczęcie pocenia się
-        
-        2. **Późne adaptacje** (dni 6-14):
-           - Zwiększona wydajność pocenia (do 2 L/h)
-           - Zmniejszone stężenie elektrolitów w pocie
-           - Obniżone tętno i temperatura jądra przy tej samej pracy
-        
-        ### Bibliografia (wybrane publikacje 2020-2026)
-        
-        1. Périard, J.D., et al. (2021). "Exercise under heat stress: thermoregulation, hydration, performance implications and mitigation strategies." *Physiological Reviews*, 101(4): 1873-1979.
-        
-        2. Racinais, S., et al. (2022). "Consensus recommendations on training and competing in the heat." *Sports Medicine*, 52(1): 1-18.
-        
-        3. Sawka, M.N., et al. (2023). "Human physiological responses to water immersion and heat acclimation." *Journal of Applied Physiology*, 134(2): 345-358.
-        
-        4. Chalmers, S., et al. (2024). "Individualized heat acclimation strategies for endurance athletes." *International Journal of Sports Physiology and Performance*, 19(3): 234-246.
-        
-        5. Garrett, A.T., et al. (2022). "Heat acclimation and heat acclimatization for endurance athletes." *Sports Medicine*, 52(5): 1021-1038.
-        
-        6. Lorenzo, S., et al. (2023). "Heat acclimation improves exercise performance in temperate and hot environments." *Journal of Applied Physiology*, 135(1): 123-135.
-        
-        7. Morris, N.B., et al. (2024). "Practical cooling strategies for endurance athletes during competition in the heat." *International Journal of Sports Physiology and Performance*, 19(4): 456-468.
-        
-        8. Tyler, C.J., et al. (2022). "Pre-cooling strategies for endurance exercise in hot environments." *Sports Medicine*, 52(8): 1789-1804.
-        """)

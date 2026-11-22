@@ -89,7 +89,7 @@ def render_thermal_tab(df_plot):
     # Use cached chart building
     fig_t = _build_thermal_chart(df_plot)
     if fig_t is not None:
-        st.plotly_chart(fig_t, use_container_width=True)
+        st.plotly_chart(fig_t, width="stretch")
     
     with st.expander("🌡️ Teoria: Koszt Termiczny Wydajności (WKO5/INSCYD)", expanded=False):
         st.markdown("""
@@ -128,7 +128,7 @@ def render_thermal_tab(df_plot):
                 return alias
         return None
     
-    temp_aliases = ['core_temperature_smooth', 'core_temperature', 'core_temp', 'temp', 'temperature', 'core temp']
+    temp_aliases = ['core_temperature_smooth', 'core_temperature', 'core_temp', 'core temp']
     hr_aliases = ['heartrate', 'heartrate_smooth', 'heart_rate', 'hr', 'heart rate', 'bpm', 'pulse']
     pwr_aliases = ['watts', 'watts_smooth', 'power', 'pwr', 'moc']
     
@@ -158,7 +158,7 @@ def render_thermal_tab(df_plot):
                 height=450, margin=dict(l=10, r=10, t=40, b=10),
                 hovermode="x unified"
             )
-            st.plotly_chart(fig_te, use_container_width=True)
+            st.plotly_chart(fig_te, width="stretch")
             
             st.info("""
             ℹ️ **Interpretacja WKO5:**
@@ -191,7 +191,7 @@ def _render_thermal_prediction_section(df_plot, decay_result):
     Model predykcji strat wydajnościowych na podstawie:
     - **dEF/dT** — spadek wydajności (W/bpm) na °C
     - **dHR/dT** — wzrost kosztu sercowego na °C
-    - **HSI** — Heat Strain Index
+    - **HSI** — szacunek modelowy (nie odczyt sensora CORE)
     """)
     
     # === PARAMETRY WEJŚCIOWE ===
@@ -284,9 +284,10 @@ def _render_thermal_prediction_section(df_plot, decay_result):
     with col3:
         st.markdown(f"""
         <div style="padding:15px; border-radius:8px; border:2px solid {prediction['risk_color']}; background-color: #222; text-align:center;">
-            <p style="margin:0; color:#aaa; font-size:0.85em;">Heat Strain Index (HSI)</p>
+            <p style="margin:0; color:#aaa; font-size:0.85em;">Szacowane obciążenie cieplne<br/>(model, nie CORE)</p>
             <h2 style="margin:5px 0; color:{prediction['risk_color']};">{prediction['hsi_estimated']:.1f} / 10</h2>
             <p style="margin:0; color:{prediction['risk_color']};">Ryzyko: {prediction['risk_label']}</p>
+            <p style="margin:4px 0 0; color:#888; font-size:0.72em;">Wartość modelowana z rdzenia i HR — nie jest odczytem sensora CORE.</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -344,7 +345,7 @@ def _render_thermal_prediction_section(df_plot, decay_result):
         legend=dict(orientation="h", y=1.1, x=0)
     )
     
-    st.plotly_chart(fig_cp, use_container_width=True)
+    st.plotly_chart(fig_cp, width="stretch")
     
     # Wnioski
     if prediction['temp_delta'] > 1.5:

@@ -27,54 +27,46 @@ class AppLayout:
         
         with st.sidebar.expander("⚙️ Parametry Fizyczne", expanded=True):
             params['rider_weight'] = st.number_input(
-                "Waga Zawodnika [kg]", step=0.5, min_value=30.0, max_value=200.0, 
-                key="weight", on_change=self.state.save_settings_callback
+                "Waga Zawodnika [kg]", step=0.5, min_value=30.0, max_value=200.0,
+                key="weight"
             )
             params['rider_height'] = st.number_input(
-                "Wzrost [cm]", step=1, min_value=100, max_value=250, 
-                key="height", on_change=self.state.save_settings_callback
+                "Wzrost [cm]", step=1, min_value=100, max_value=250,
+                key="height"
             )
             params['rider_age'] = st.number_input(
-                "Wiek [lata]", step=1, min_value=10, max_value=100, 
-                key="age", on_change=self.state.save_settings_callback
+                "Wiek [lata]", step=1, min_value=10, max_value=100,
+                key="age"
             )
-            params['is_male'] = st.checkbox(
-                "Mężczyzna?", key="gender_m", on_change=self.state.save_settings_callback
-            )
-            
+            params['is_male'] = st.checkbox("Mężczyzna?", key="gender_m")
+
             st.markdown("---")
             params['vt1_watts'] = st.number_input(
-                "VT1 (Próg Tlenowy) [W]", min_value=0, value=0, 
-                key="vt1_w", on_change=self.state.save_settings_callback
+                "VT1 (Próg Tlenowy) [W]", min_value=0, key="vt1_w"
             )
             params['vt2_watts'] = st.number_input(
-                "VT2 (Próg Beztlenowy/FTP) [W]", min_value=0, value=0, 
-                key="vt2_w", on_change=self.state.save_settings_callback
+                "VT2 (Próg Beztlenowy/FTP) [W]", min_value=0, key="vt2_w"
             )
             st.divider()
 
             st.markdown("### 🫁 Wentylacja [L/min]")
             params['vt1_vent'] = st.number_input(
-                "VT1 (Próg Tlenowy) [L/min]", min_value=0.0, 
-                key="vt1_v", on_change=self.state.save_settings_callback
+                "VT1 (Próg Tlenowy) [L/min]", min_value=0.0, key="vt1_v"
             )
             params['vt2_vent'] = st.number_input(
-                "VT2 (Próg Beztlenowy) [L/min]", min_value=0.0, 
-                key="vt2_v", on_change=self.state.save_settings_callback
+                "VT2 (Próg Beztlenowy) [L/min]", min_value=0.0, key="vt2_v"
             )
 
         st.sidebar.divider()
         params['cp'] = st.sidebar.number_input(
-            "Moc Krytyczna (CP) [W]", min_value=1, 
-            key="cp_in", on_change=self.state.save_settings_callback
+            "Moc Krytyczna (CP) [W]", min_value=1, key="cp_in"
         )
         params['w_prime'] = st.sidebar.number_input(
-            "W' (W Prime) [J]", min_value=0, 
-            key="wp_in", on_change=self.state.save_settings_callback
+            "W' (W Prime) [J]", min_value=0, key="wp_in"
         )
         st.sidebar.divider()
         params['crank_length'] = st.sidebar.number_input(
-            "Długość korby [mm]", key="crank", on_change=self.state.save_settings_callback
+            "Długość korby [mm]", key="crank"
         )
         uploaded_file = st.sidebar.file_uploader("Wgraj plik (CSV / TXT)", type=['csv', 'txt'])
             

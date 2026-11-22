@@ -2,3 +2,8 @@
 port = 8503
 address = "localhost"
 headless = true
+
+[global]
+# Manual threshold widgets are kept alive across tab switches by re-assigning their
+# session_state keys (modules/frontend/state.py), which would otherwise warn once.
+disableWidgetStateDuplicationWarning = true

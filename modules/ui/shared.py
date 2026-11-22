@@ -6,7 +6,18 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from modules.calculations.threshold_types import StepTestResult
+from modules.calculations.thresholds import analyze_step_test
 from modules.plots import CHART_CONFIG
+
+
+@st.cache_data(show_spinner=False, max_entries=16)
+def cached_analyze_step_test(df: pd.DataFrame, **kwargs) -> StepTestResult:
+    """analyze_step_test memoized on DataFrame content + kwargs.
+
+    It is the slowest per-tab computation (~0.5 s); uncached it re-ran on every rerun.
+    """
+    return analyze_step_test(df, **kwargs)
 
 
 def chart(

@@ -60,7 +60,7 @@ def render_biomech_tab(df_plot, df_plot_resampled):  # noqa: C901
             height=450
         )
         
-        st.plotly_chart(fig_b, use_container_width=True)
+        st.plotly_chart(fig_b, width="stretch")
         
         st.info("""
         **💡 Kompendium: Moment Obrotowy (Siła) vs Kadencja (Szybkość)**
@@ -152,7 +152,7 @@ def render_biomech_tab(df_plot, df_plot_resampled):  # noqa: C901
             height=450
         )
         
-        st.plotly_chart(fig_ts, use_container_width=True)
+        st.plotly_chart(fig_ts, width="stretch")
         
         st.info("""
         **💡 Fizjologia Okluzji (Analiza Koszykowa):**
@@ -251,7 +251,7 @@ def render_biomech_tab(df_plot, df_plot_resampled):  # noqa: C901
                 height=450
             )
             
-            st.plotly_chart(fig_pp, use_container_width=True)
+            st.plotly_chart(fig_pp, width="stretch")
             
             st.info("""
             **💡 Jak to czytać?**
@@ -378,7 +378,7 @@ def render_biomech_tab(df_plot, df_plot_resampled):  # noqa: C901
                 legend=dict(orientation="h", y=1.1, x=0)
             )
             
-            st.plotly_chart(fig_ge, use_container_width=True)
+            st.plotly_chart(fig_ge, width="stretch")
             
             with st.expander("🧠 Jak interpretować GE?", expanded=False):
                 st.markdown("""
